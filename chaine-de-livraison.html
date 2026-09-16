@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chaîne de livraison virtuelle — du besoin au Go/No-Go</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .cd-wrap { max-width: 1180px; margin: 1.4rem auto 4rem; padding: 0 1.2rem; }
+    .cd-hero { background: linear-gradient(135deg, rgba(139,92,246,0.14), rgba(59,130,246,0.10));
+               border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem 1.4rem; margin-bottom: 1.2rem; }
+    .cd-hero .tag { display: inline-block; font-size: 0.66rem; font-weight: 700; text-transform: uppercase;
+                    letter-spacing: 0.6px; background: rgba(139,92,246,0.18); color: #c4b5fd;
+                    padding: 0.2rem 0.55rem; border-radius: 5px; margin-bottom: 0.55rem; }
+    .cd-hero h1 { margin: 0 0 0.4rem; font-size: 1.5rem; line-height: 1.25; }
+    .cd-hero p { margin: 0.2rem 0 0; color: var(--text-dim); font-size: 0.9rem; line-height: 1.65; }
+    .cd-hero .roles { margin-top: 0.8rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .role-chip { font-size: 0.72rem; font-weight: 600; padding: 0.25rem 0.6rem; border-radius: 20px;
+                 border: 1px solid var(--border); color: #e6e8ef; background: rgba(255,255,255,0.04); }
+    .role-chip.you { background: var(--blue-dim); color: #cfe3ff; border-color: transparent; }
+    .barre { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent);
+             backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px;
+             padding: 0.6rem 0.9rem; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.8rem;
+             flex-wrap: wrap; }
+    .barre .prog { font-size: 0.8rem; font-weight: 700; }
+    .barre .jauge { flex: 1 1 140px; height: 8px; border-radius: 6px; background: var(--border); overflow: hidden; }
+    .barre .jauge span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8b5cf6, #3b82f6);
+                         transition: width .35s ease; }
+    .barre button { cursor: pointer; font-family: inherit; font-size: 0.82rem; font-weight: 700; border-radius: 8px;
+                    padding: 0.45rem 0.85rem; border: 1px solid var(--border); background: transparent; color: var(--text); }
+    .barre button.primary { background: var(--blue); color: #fff; border-color: transparent; }
+    .etape { background: var(--card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 0.7rem;
+             overflow: hidden; }
+    .etape.hidden { display: none; }
+    .etape-hdr { display: flex; align-items: center; gap: 0.65rem; padding: 0.85rem 1rem; }
+    .etape-n { width: 28px; height: 28px; flex: 0 0 28px; border-radius: 8px; display: flex; align-items: center;
+               justify-content: center; font-weight: 800; font-size: 0.85rem; background: var(--blue-dim);
+               color: var(--blue); }
+    .etape-hdr .acteur { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+                         padding: 0.15rem 0.45rem; border-radius: 4px; background: rgba(255,255,255,0.06);
+                         color: #d7dae3; }
+    .etape-hdr .acteur.qa { background: var(--green-dim); color: var(--green); }
+    .etape-hdr .acteur.dev { background: rgba(251,146,60,0.16); color: var(--orange); }
+    .etape-hdr .titre { font-weight: 700; font-size: 0.96rem; flex: 1; }
+    .etape-corps { padding: 0 1rem 1rem; font-size: 0.85rem; line-height: 1.6; }
+    .syllabus { font-size: 0.72rem; color: var(--text-dim); border-left: 2px solid var(--border);
+                padding-left: 0.55rem; margin-bottom: 0.7rem; }
+    .etape-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.8rem; }
+    .etape-actions button { cursor: pointer; font-family: inherit; font-size: 0.86rem; font-weight: 700;
+                            border-radius: 8px; padding: 0.55rem 1rem; border: 1px solid transparent; }
+    .etape-actions .go { background: var(--blue); color: #fff; }
+    .etape-actions .alt { background: transparent; color: var(--text); border-color: var(--border); }
+    .etape-actions button[disabled] { opacity: .45; cursor: default; }
+    table.cd { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    table.cd th { text-align: left; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.4px;
+                  color: #c9d1d9; font-weight: 700; padding: 0.45rem 0.55rem; border-bottom: 1px solid var(--border); }
+    table.cd td { padding: 0.45rem 0.55rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.cd tr:last-child td { border-bottom: none; }
+    table.cd tr.ko td { background: rgba(248,113,113,0.07); }
+    table.cd tr.regression td { background: rgba(248,113,113,0.14); }
+    .boite { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+             padding: 0.55rem 0.6rem; overflow-x: auto; }
+    .chip { font-size: 0.68rem; font-weight: 700; padding: 0.14rem 0.45rem; border-radius: 20px; white-space: nowrap; }
+    .chip.ok { background: var(--green-dim); color: var(--green); }
+    .chip.ko { background: rgba(248,113,113,0.18); color: var(--red); }
+    .chip.warn { background: rgba(251,146,60,0.16); color: var(--orange); }
+    .chip.neutre { background: rgba(255,255,255,0.07); color: #d7dae3; }
+    .bilan { display: flex; gap: 0.7rem; flex-wrap: wrap; margin: 0.7rem 0; }
+    .bilan .b { flex: 1 1 130px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+                padding: 0.6rem 0.75rem; }
+    .bilan .b .n { font-size: 1.35rem; font-weight: 800; display: block; }
+    .bilan .b .l { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.4px; color: #c9d1d9;
+                   font-weight: 600; }
+    .bilan .b.ok .n { color: var(--green); }
+    .bilan .b.ko .n { color: var(--red); }
+    .bilan .b.info .n { color: var(--blue); }
+    .alerte { border-left: 3px solid var(--orange); background: rgba(251,146,60,0.08); border-radius: 8px;
+              padding: 0.7rem 0.85rem; font-size: 0.84rem; line-height: 1.6; margin: 0.7rem 0; }
+    .alerte.ok { border-color: var(--green); background: rgba(16,185,129,0.08); }
+    .alerte.danger { border-color: var(--red); background: rgba(248,113,113,0.09); }
+    .us-carte { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 0.9rem;
+                margin-bottom: 0.5rem; }
+    .us-carte .t { font-weight: 700; font-size: 0.88rem; }
+    .us-carte .recit { color: var(--text-dim); font-size: 0.82rem; margin: 0.3rem 0 0.5rem; line-height: 1.55; }
+    .us-carte ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+    .us-carte li { font-size: 0.8rem; color: var(--text-dim); line-height: 1.55; margin-bottom: 0.25rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; }
+    .gris { color: var(--text-dim); }
+    .cd-foot { margin-top: 2.2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.74rem;
+               color: var(--text-dim); line-height: 1.7; }
+    @media (max-width: 760px) {
+      .cd-hero h1 { font-size: 1.2rem; }
+      .etape-hdr { flex-wrap: wrap; }
+      .etape-hdr .titre { flex: 1 1 100%; order: 3; }
+      table.cd { font-size: 0.75rem; }
+      .bilan .b { flex: 1 1 45%; }
+    }
+  </style>
+<link rel="stylesheet" href="static/site.css">
+</head>
+<body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a class="actif" href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+
+<div class="cd-wrap">
+  <div class="cd-hero">
+    <span class="tag">Démonstration interactive · processus de test complet</span>
+    <h1>Une livraison, du besoin métier au Go/No-Go — avec de vrais tests exécutés</h1>
+    <p>
+      Une demande métier arrive, le Product Owner l'écrit en user stories, le QA analyse le risque et
+      conçoit les tests, le développeur livre <strong>avec des défauts</strong>, le QA exécute la campagne,
+      rédige les anomalies, reçoit un correctif, puis vérifie en <strong>confirmation</strong> et en
+      <strong>régression</strong> avant de décider la mise en production.
+    </p>
+    <p>
+      Les campagnes de test ne sont pas illustrées : elles <strong>s'exécutent réellement</strong> sur le
+      serveur, sur le code de la version livrée. Le nombre d'anomalies affiché est le nombre d'échecs réels.
+      Seul le développeur est simulé.
+    </p>
+    <div class="roles">
+      <span class="role-chip">Métier</span>
+      <span class="role-chip">Product Owner</span>
+      <span class="role-chip">Développeur</span>
+      <span class="role-chip you">Vous : QA / Test Manager</span>
+    </div>
+  </div>
+
+  <div class="barre">
+    <span class="prog" id="prog">Étape 1 / 12</span>
+    <span class="jauge"><span id="jauge"></span></span>
+    <button class="primary" onclick="etapeSuivante()">Étape suivante</button>
+    <button onclick="toutDerouler()">Tout dérouler</button>
+    <button onclick="reinitialiser()">Recommencer</button>
+  </div>
+
+  <div id="timeline"></div>
+
+  <div class="cd-foot" id="pied">Chargement du scénario…</div>
+</div>
+
+<script>
+let S = null;
+let etape = 1;
+const TOTAL = 12;
+
+const __SCENARIO_JSON__ = {"demande": {"id": "DM-2026-014", "titre": "Permettre aux utilisateurs de retrouver rapidement les offres qui leur conviennent", "demandeur": "Direction produit", "contexte": "Les utilisateurs se plaignent de devoir parcourir toute la liste pour trouver les offres réellement télétravaillables dans leur budget. Deux écrans d'analyse ont été nécessaires pour arriver à la conclusion, l'effort est jugé prioritaire.", "valeur_attendue": "Réduire le temps de recherche d'une offre pertinente et augmenter le taux de candidature.", "perimetre": "Filtre de recherche (type de télétravail, budget minimum) + tri par pertinence + pagination.", "hors_perimetre": "Recherche par mot-clé libre, sauvegarde des filtres, notifications.", "indicateurs": ["Temps moyen pour trouver une offre", "Nombre de candidatures par session"]}, "user_stories": [{"id": "US-101", "titre": "Filtrer les offres par type de télétravail", "recit": "En tant qu'utilisateur, je veux filtrer les offres par type de télétravail afin de ne voir que celles compatibles avec mon organisation.", "priorite": "Must", "valeur_metier": 5, "risque": 4, "risque_justification": "Le champ vient d'une source externe et ses valeurs varient (casse, libellés anglais/français) : erreur de filtrage fréquente en production.", "criteres": [{"id": "CA-101-1", "etant_donne": "des offres de types remote, fully_remote, hybrid et onsite", "quand": "je filtre sur « remote »", "alors": "je vois uniquement les offres de type remote"}, {"id": "CA-101-2", "etant_donne": "une offre écrite « Fully_Remote » par la source", "quand": "je filtre sur « fully_remote »", "alors": "elle est bien retournée"}, {"id": "CA-101-3", "etant_donne": "un filtre saisi en majuscules", "quand": "je lance la recherche", "alors": "le résultat est identique à la saisie en minuscules"}, {"id": "CA-101-4", "etant_donne": "des offres de types remote, hybrid et onsite", "quand": "je filtre sur « onsite »", "alors": "je vois uniquement les offres sur site"}]}, {"id": "US-102", "titre": "Filtrer les offres par budget minimum", "recit": "En tant que freelance, je veux indiquer un budget minimum afin d'écarter les missions sous mon seuil.", "priorite": "Must", "valeur_metier": 4, "risque": 3, "risque_justification": "Comparaison de seuil : une borne mal choisie (strict au lieu d'inclusif) exclut silencieusement des offres.", "criteres": [{"id": "CA-102-1", "etant_donne": "une offre exactement au budget minimum saisi", "quand": "je filtre", "alors": "elle est incluse dans le résultat"}, {"id": "CA-102-2", "etant_donne": "des offres sans budget renseigné", "quand": "je filtre sur un budget minimum", "alors": "elles sont exclues du résultat"}, {"id": "CA-102-3", "etant_donne": "un filtre de télétravail et un budget minimum saisis ensemble", "quand": "je lance la recherche", "alors": "les deux règles s'appliquent simultanément"}]}, {"id": "US-103", "titre": "Trier les résultats par pertinence", "recit": "En tant qu'utilisateur, je veux voir les offres les plus pertinentes en premier afin de décider plus vite.", "priorite": "Must", "valeur_metier": 4, "risque": 2, "risque_justification": "Un tri inversé reste « fonctionnel » : il ne casse rien, il dégrade la valeur.", "criteres": [{"id": "CA-103-1", "etant_donne": "des offres notées de 12 à 88", "quand": "j'affiche les résultats", "alors": "elles sont ordonnées du score le plus haut au plus bas"}, {"id": "CA-103-2", "etant_donne": "deux offres à score identique", "quand": "j'affiche les résultats", "alors": "l'ordre est stable d'un affichage à l'autre (départage par identifiant)"}]}, {"id": "US-104", "titre": "Parcourir les résultats page par page", "recit": "En tant qu'utilisateur, je veux parcourir les résultats par page afin de ne pas charger toute la liste d'un coup.", "priorite": "Should", "valeur_metier": 3, "risque": 3, "risque_justification": "Le calcul d'index de page est une source classique de décalage d'un élément.", "criteres": [{"id": "CA-104-1", "etant_donne": "9 résultats et des pages de 3", "quand": "j'affiche la page 1", "alors": "je vois les résultats 1 à 3"}, {"id": "CA-104-2", "etant_donne": "3 résultats et des pages de 3", "quand": "j'affiche la page 2", "alors": "je vois une liste vide"}]}], "etapes": [{"n": 1, "id": "demande", "acteur": "Métier", "activite": "Demande métier", "syllabus": "Contexte du projet et base de test (CTFL §1, CT-AI ch. 7.1)", "role_visiteur": "Lire la demande et juger si elle est testable."}, {"n": 2, "id": "us", "acteur": "Product Owner", "activite": "User stories et critères d'acceptation", "syllabus": "Base de test : conditions de test vérifiables (CTFL §2.2)", "role_visiteur": "Vérifier que chaque critère est vérifiable sans ambiguïté."}, {"n": 3, "id": "risque", "acteur": "QA", "activite": "Analyse de risque et planification", "syllabus": "Analyse de risque produit et de projet (CTFL §5.2)", "role_visiteur": "Valider la priorisation par risque."}, {"n": 4, "id": "conception", "acteur": "QA", "activite": "Conception des tests et traçabilité", "syllabus": "Analyse, conception et implémentation des tests (CTFL §4, CT-AI ch. 9)", "role_visiteur": "Contrôler la traçabilité exigence → test."}, {"n": 5, "id": "execution", "acteur": "QA", "activite": "Campagne d'exécution sur la livraison v1.0.0", "syllabus": "Exécution des tests et journalisation (CTFL §1.4, CT-AI ch. 7.2)", "role_visiteur": "Lancer la campagne : les tests s'exécutent réellement."}, {"n": 6, "id": "anomalies", "acteur": "QA", "activite": "Rapports d'anomalie et triage", "syllabus": "Gestion des anomalies : rapport, sévérité, priorité (CTFL §5.5)", "role_visiteur": "Vérifier que chaque anomalie est exploitable par le développeur."}, {"n": 7, "id": "correctif1", "acteur": "Développeur", "activite": "Premier correctif — livraison v1.1.0", "syllabus": "Analyse des anomalies et correction (CTFL §5.4)", "role_visiteur": "Pousser le correctif du développeur."}, {"n": 8, "id": "confirmation", "acteur": "QA", "activite": "Test de confirmation sur v1.1.0", "syllabus": "Test de confirmation : rejouer les tests en échec (CTFL §1.2.2)", "role_visiteur": "Rejouer uniquement les tests en échec."}, {"n": 9, "id": "regression", "acteur": "QA", "activite": "Test de régression sur v1.1.0", "syllabus": "Test de régression : vérifier que rien n'a été cassé (CTFL §1.2.2)", "role_visiteur": "Rejouer toute la suite : le correctif peut avoir cassé ailleurs."}, {"n": 10, "id": "correctif2", "acteur": "Développeur", "activite": "Second correctif — livraison v1.1.1", "syllabus": "Itération sur les anomalies détectées en régression (CTFL §5.4)", "role_visiteur": "Pousser le correctif de la régression."}, {"n": 11, "id": "verification", "acteur": "QA", "activite": "Confirmation et régression finales sur v1.1.1", "syllabus": "Re-test complet avant décision de mise en production (CTFL §1.2.2)", "role_visiteur": "Vérifier que tout est vert avant de décider."}, {"n": 12, "id": "verdict", "acteur": "QA + Métier", "activite": "Critères de sortie, Go/No-Go et clôture", "syllabus": "Critères d'entrée/sortie, rapport de test et clôture (CTFL §5.3, §5.5, §5.6)", "role_visiteur": "Décider le Go sur les faits, puis lire le rapport de clôture."}], "versions": {"v1": {"libelle": "v1.0.0 — première livraison du développeur", "note": "Le développeur a livré le filtre en s'appuyant sur les valeurs qu'il a vues passer : comparaison stricte, budget strictement supérieur, tri croissant, index de page décalé.", "date": "J+5"}, "v2": {"libelle": "v1.1.0 — correctif après anomalies", "note": "Les quatre anomalies sont corrigées. Le correctif du filtre est implémenté par recherche de sous-chaîne pour « être plus tolérant ».", "date": "J+7"}, "v3": {"libelle": "v1.1.1 — correctif de la régression", "note": "Le filtre compare désormais des familles de valeurs normalisées (casse, accents, alias), sans recherche de sous-chaîne.", "date": "J+8"}}, "cas": [{"id": "TC-01", "us": "US-101", "ca": "CA-101-1", "type": "fonctionnel", "priorite": "critique", "technique": "Partition d'équivalence", "titre": "Filtrer sur « remote » retourne uniquement les offres de type remote", "etapes": "Appliquer le filtre « remote », trier, comparer les identifiants obtenus.", "attendu": "o1 puis o5 (les deux offres de type remote)"}, {"id": "TC-02", "us": "US-101", "ca": "CA-101-2", "type": "fonctionnel", "priorite": "majeur", "technique": "Partition d'équivalence", "titre": "Filtrer sur « fully_remote » retourne les offres correspondantes", "etapes": "Appliquer le filtre « fully_remote », trier, comparer les identifiants obtenus.", "attendu": "o2 puis o6"}, {"id": "TC-03", "us": "US-101", "ca": "CA-101-3", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (casse)", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5"}, {"id": "TC-04", "us": "US-102", "ca": "CA-102-1", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (borne inclusive)", "titre": "Une offre exactement au budget minimum est incluse", "etapes": "Filtrer sur un budget minimum de 600 : l'offre à 600 exactement doit apparaître.", "attendu": "o1 (600 exactement), o2 (700), o3 (650), o6 (900)"}, {"id": "TC-05", "us": "US-102", "ca": "CA-102-2", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (absence de valeur)", "titre": "Les offres sans budget renseigné sont exclues", "etapes": "Filtrer sur un budget minimum de 0 : aucune offre sans budget ne doit apparaître.", "attendu": "o1 à o6 — jamais o7 ni o8 (budget absent)"}, {"id": "TC-06", "us": "US-103", "ca": "CA-103-1", "type": "fonctionnel", "priorite": "critique", "technique": "Cas de test fonctionnel", "titre": "Les résultats sont triés du score le plus haut au plus bas", "etapes": "Trier la totalité des offres et vérifier la décroissance des scores.", "attendu": "scores décroissants, premier = 88"}, {"id": "TC-07", "us": "US-103", "ca": "CA-103-2", "type": "fonctionnel", "priorite": "mineur", "technique": "Cas de test fonctionnel", "titre": "Deux offres à score égal sont départagées par identifiant", "etapes": "Vérifier l'ordre des deux offres à score 60 (o4 et o5).", "attendu": "o4 puis o5"}, {"id": "TC-08", "us": "US-104", "ca": "CA-104-1", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (index de page)", "titre": "La page 1 affiche les 3 premiers résultats", "etapes": "Appeler la recherche complète page 1 et comparer aux 3 premiers du tri.", "attendu": "o6, o1, o2"}, {"id": "TC-09", "us": "US-104", "ca": "CA-104-2", "type": "limite", "priorite": "mineur", "technique": "Analyse des valeurs limites (page hors plage)", "titre": "Une page au-delà du dernier résultat renvoie une liste vide", "etapes": "Filtrer sur « hybrid » (2 offres) et demander la page 3.", "attendu": "liste vide"}, {"id": "TC-10", "us": "US-101", "ca": "CA-101-1", "type": "régression", "priorite": "critique", "technique": "Test de régression (correctif du filtre)", "titre": "Filtrer sur « remote » ne doit pas retourner les offres fully_remote", "etapes": "Vérifier qu'aucune offre d'un autre type ne remonte dans le filtre « remote ».", "attendu": "aucune offre hors du type demandé"}, {"id": "TC-11", "us": "US-101", "ca": "CA-101-4", "type": "régression", "priorite": "majeur", "technique": "Test de régression (filtres voisins)", "titre": "Filtrer sur « onsite » ne retourne que les offres sur site", "etapes": "Vérifier le filtre « onsite » et les types retournés.", "attendu": "o4 puis o8"}, {"id": "TC-12", "us": "US-102", "ca": "CA-102-3", "type": "table de décision", "priorite": "majeur", "technique": "Test par tables de décisions (filtres combinés)", "titre": "Filtres combinés télétravail + budget minimum", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)"}], "tracabilite": [{"us": "US-101", "us_titre": "Filtrer les offres par type de télétravail", "critere": "CA-101-1", "enonce": "Étant donné des offres de types remote, fully_remote, hybrid et onsite — quand je filtre sur « remote » — alors je vois uniquement les offres de type remote", "cas": ["TC-01", "TC-10"], "couvert": true, "technique": "Partition d'équivalence, Test de régression (correctif du filtre)"}, {"us": "US-101", "us_titre": "Filtrer les offres par type de télétravail", "critere": "CA-101-2", "enonce": "Étant donné une offre écrite « Fully_Remote » par la source — quand je filtre sur « fully_remote » — alors elle est bien retournée", "cas": ["TC-02"], "couvert": true, "technique": "Partition d'équivalence"}, {"us": "US-101", "us_titre": "Filtrer les offres par type de télétravail", "critere": "CA-101-3", "enonce": "Étant donné un filtre saisi en majuscules — quand je lance la recherche — alors le résultat est identique à la saisie en minuscules", "cas": ["TC-03"], "couvert": true, "technique": "Analyse des valeurs limites (casse)"}, {"us": "US-101", "us_titre": "Filtrer les offres par type de télétravail", "critere": "CA-101-4", "enonce": "Étant donné des offres de types remote, hybrid et onsite — quand je filtre sur « onsite » — alors je vois uniquement les offres sur site", "cas": ["TC-11"], "couvert": true, "technique": "Test de régression (filtres voisins)"}, {"us": "US-102", "us_titre": "Filtrer les offres par budget minimum", "critere": "CA-102-1", "enonce": "Étant donné une offre exactement au budget minimum saisi — quand je filtre — alors elle est incluse dans le résultat", "cas": ["TC-04"], "couvert": true, "technique": "Analyse des valeurs limites (borne inclusive)"}, {"us": "US-102", "us_titre": "Filtrer les offres par budget minimum", "critere": "CA-102-2", "enonce": "Étant donné des offres sans budget renseigné — quand je filtre sur un budget minimum — alors elles sont exclues du résultat", "cas": ["TC-05"], "couvert": true, "technique": "Analyse des valeurs limites (absence de valeur)"}, {"us": "US-102", "us_titre": "Filtrer les offres par budget minimum", "critere": "CA-102-3", "enonce": "Étant donné un filtre de télétravail et un budget minimum saisis ensemble — quand je lance la recherche — alors les deux règles s'appliquent simultanément", "cas": ["TC-12"], "couvert": true, "technique": "Test par tables de décisions (filtres combinés)"}, {"us": "US-103", "us_titre": "Trier les résultats par pertinence", "critere": "CA-103-1", "enonce": "Étant donné des offres notées de 12 à 88 — quand j'affiche les résultats — alors elles sont ordonnées du score le plus haut au plus bas", "cas": ["TC-06"], "couvert": true, "technique": "Cas de test fonctionnel"}, {"us": "US-103", "us_titre": "Trier les résultats par pertinence", "critere": "CA-103-2", "enonce": "Étant donné deux offres à score identique — quand j'affiche les résultats — alors l'ordre est stable d'un affichage à l'autre (départage par identifiant)", "cas": ["TC-07"], "couvert": true, "technique": "Cas de test fonctionnel"}, {"us": "US-104", "us_titre": "Parcourir les résultats page par page", "critere": "CA-104-1", "enonce": "Étant donné 9 résultats et des pages de 3 — quand j'affiche la page 1 — alors je vois les résultats 1 à 3", "cas": ["TC-08"], "couvert": true, "technique": "Analyse des valeurs limites (index de page)"}, {"us": "US-104", "us_titre": "Parcourir les résultats page par page", "critere": "CA-104-2", "enonce": "Étant donné 3 résultats et des pages de 3 — quand j'affiche la page 2 — alors je vois une liste vide", "cas": ["TC-09"], "couvert": true, "technique": "Analyse des valeurs limites (page hors plage)"}], "campagnes": {"v1_execution": {"campagne": {"version": "v1", "version_libelle": "v1.0.0 — première livraison du développeur", "resultats": [{"cas": "TC-01", "titre": "Filtrer sur « remote » retourne uniquement les offres de type remote", "us": "US-101", "ca": "CA-101-1", "type": "fonctionnel", "priorite": "critique", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « remote », trier, comparer les identifiants obtenus.", "attendu": "o1 puis o5 (les deux offres de type remote)", "obtenu": ["o1", "o5"], "attendu_valeur": ["o1", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-02", "titre": "Filtrer sur « fully_remote » retourne les offres correspondantes", "us": "US-101", "ca": "CA-101-2", "type": "fonctionnel", "priorite": "majeur", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « fully_remote », trier, comparer les identifiants obtenus.", "attendu": "o2 puis o6", "obtenu": ["o2", "o6"], "attendu_valeur": ["o2", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "us": "US-101", "ca": "CA-101-3", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (casse)", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": [], "attendu_valeur": ["o1", "o5"], "statut": "en échec", "message": "attendu ['o1', 'o5'] — obtenu []"}, {"cas": "TC-04", "titre": "Une offre exactement au budget minimum est incluse", "us": "US-102", "ca": "CA-102-1", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (borne inclusive)", "etapes": "Filtrer sur un budget minimum de 600 : l'offre à 600 exactement doit apparaître.", "attendu": "o1 (600 exactement), o2 (700), o3 (650), o6 (900)", "obtenu": ["o2", "o3", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o6"], "statut": "en échec", "message": "attendu ['o1', 'o2', 'o3', 'o6'] — obtenu ['o2', 'o3', 'o6']"}, {"cas": "TC-05", "titre": "Les offres sans budget renseigné sont exclues", "us": "US-102", "ca": "CA-102-2", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (absence de valeur)", "etapes": "Filtrer sur un budget minimum de 0 : aucune offre sans budget ne doit apparaître.", "attendu": "o1 à o6 — jamais o7 ni o8 (budget absent)", "obtenu": ["o1", "o2", "o3", "o4", "o5", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o4", "o5", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-06", "titre": "Les résultats sont triés du score le plus haut au plus bas", "us": "US-103", "ca": "CA-103-1", "type": "fonctionnel", "priorite": "critique", "technique": "Cas de test fonctionnel", "etapes": "Trier la totalité des offres et vérifier la décroissance des scores.", "attendu": "scores décroissants, premier = 88", "obtenu": [12, 55, 60, 60, 71, 78, 82, 88], "attendu_valeur": [88, 82, 78, 71, 60, 60, 55, 12], "statut": "en échec", "message": "attendu [88, 82, 78, 71, 60, 60, 55, 12] — obtenu [12, 55, 60, 60, 71, 78, 82, 88]"}, {"cas": "TC-07", "titre": "Deux offres à score égal sont départagées par identifiant", "us": "US-103", "ca": "CA-103-2", "type": "fonctionnel", "priorite": "mineur", "technique": "Cas de test fonctionnel", "etapes": "Vérifier l'ordre des deux offres à score 60 (o4 et o5).", "attendu": "o4 puis o5", "obtenu": ["o4", "o5"], "attendu_valeur": ["o4", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-08", "titre": "La page 1 affiche les 3 premiers résultats", "us": "US-104", "ca": "CA-104-1", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (index de page)", "etapes": "Appeler la recherche complète page 1 et comparer aux 3 premiers du tri.", "attendu": "o6, o1, o2", "obtenu": ["o5", "o3", "o2"], "attendu_valeur": ["o6", "o1", "o2"], "statut": "en échec", "message": "attendu ['o6', 'o1', 'o2'] — obtenu ['o5', 'o3', 'o2']"}, {"cas": "TC-09", "titre": "Une page au-delà du dernier résultat renvoie une liste vide", "us": "US-104", "ca": "CA-104-2", "type": "limite", "priorite": "mineur", "technique": "Analyse des valeurs limites (page hors plage)", "etapes": "Filtrer sur « hybrid » (2 offres) et demander la page 3.", "attendu": "liste vide", "obtenu": [], "attendu_valeur": [], "statut": "réussi", "message": null}, {"cas": "TC-10", "titre": "Filtrer sur « remote » ne doit pas retourner les offres fully_remote", "us": "US-101", "ca": "CA-101-1", "type": "régression", "priorite": "critique", "technique": "Test de régression (correctif du filtre)", "etapes": "Vérifier qu'aucune offre d'un autre type ne remonte dans le filtre « remote ».", "attendu": "aucune offre hors du type demandé", "obtenu": [], "attendu_valeur": [], "statut": "réussi", "message": null}, {"cas": "TC-11", "titre": "Filtrer sur « onsite » ne retourne que les offres sur site", "us": "US-101", "ca": "CA-101-4", "type": "régression", "priorite": "majeur", "technique": "Test de régression (filtres voisins)", "etapes": "Vérifier le filtre « onsite » et les types retournés.", "attendu": "o4 puis o8", "obtenu": ["o4", "o8"], "attendu_valeur": ["o4", "o8"], "statut": "réussi", "message": null}, {"cas": "TC-12", "titre": "Filtres combinés télétravail + budget minimum", "us": "US-102", "ca": "CA-102-3", "type": "table de décision", "priorite": "majeur", "technique": "Test par tables de décisions (filtres combinés)", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": [], "attendu_valeur": ["o1"], "statut": "en échec", "message": "attendu ['o1'] — obtenu []"}], "synthese": {"executes": 12, "reussis": 7, "echecs": 5, "taux_reussite": 58.3, "par_type": {"fonctionnel": {"total": 4, "echecs": 1}, "limite": {"total": 5, "echecs": 3}, "régression": {"total": 2, "echecs": 0}, "table de décision": {"total": 1, "echecs": 1}}, "echecs_critiques": 3, "echecs_majeurs": 2, "echecs_mineurs": 0, "ids_en_echec": ["TC-03", "TC-04", "TC-06", "TC-08", "TC-12"]}}, "anomalies": [{"id": "AN-TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "exigence": "US-101 / CA-101-3", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "limite", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": [], "detecte_par": "TC-03", "technique": "Analyse des valeurs limites (casse)"}, {"id": "AN-TC-04", "titre": "Une offre exactement au budget minimum est incluse", "exigence": "US-102 / CA-102-1", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "limite", "etapes": "Filtrer sur un budget minimum de 600 : l'offre à 600 exactement doit apparaître.", "attendu": "o1 (600 exactement), o2 (700), o3 (650), o6 (900)", "obtenu": ["o2", "o3", "o6"], "detecte_par": "TC-04", "technique": "Analyse des valeurs limites (borne inclusive)"}, {"id": "AN-TC-06", "titre": "Les résultats sont triés du score le plus haut au plus bas", "exigence": "US-103 / CA-103-1", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "fonctionnel", "etapes": "Trier la totalité des offres et vérifier la décroissance des scores.", "attendu": "scores décroissants, premier = 88", "obtenu": [12, 55, 60, 60, 71, 78, 82, 88], "detecte_par": "TC-06", "technique": "Cas de test fonctionnel"}, {"id": "AN-TC-08", "titre": "La page 1 affiche les 3 premiers résultats", "exigence": "US-104 / CA-104-1", "severite": "majeure", "priorite": "à corriger avant livraison", "type": "limite", "etapes": "Appeler la recherche complète page 1 et comparer aux 3 premiers du tri.", "attendu": "o6, o1, o2", "obtenu": ["o5", "o3", "o2"], "detecte_par": "TC-08", "technique": "Analyse des valeurs limites (index de page)"}, {"id": "AN-TC-12", "titre": "Filtres combinés télétravail + budget minimum", "exigence": "US-102 / CA-102-3", "severite": "majeure", "priorite": "à corriger avant livraison", "type": "table de décision", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": [], "detecte_par": "TC-12", "technique": "Test par tables de décisions (filtres combinés)"}], "criteres_sortie": {"criteres": [{"critere": "Tous les tests à priorité critique passent", "exige": "0 échec critique", "mesure": 3, "ok": false}, {"critere": "Aucune anomalie bloquante ou majeure ouverte", "exige": "0 anomalie ouverte", "mesure": 5, "ok": false}, {"critere": "Taux de réussite de la suite ≥ 100 %", "exige": "100 %", "mesure": "58.3 %", "ok": false}, {"critere": "Suite de régression exécutée à 100 %", "exige": "tous les tests de régression exécutés", "mesure": "2 tests de régression", "ok": true}, {"critere": "Traçabilité exigence → test complète", "exige": "chaque user story couverte", "mesure": "4/4 user stories couvertes", "ok": true}], "go": false}}, "v2_confirmation": {"campagne": {"version": "v2", "version_libelle": "v1.1.0 — correctif après anomalies", "resultats": [{"cas": "TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "us": "US-101", "ca": "CA-101-3", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (casse)", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": ["o1", "o2", "o5", "o6"], "attendu_valeur": ["o1", "o5"], "statut": "en échec", "message": "attendu ['o1', 'o5'] — obtenu ['o1', 'o2', 'o5', 'o6']"}, {"cas": "TC-04", "titre": "Une offre exactement au budget minimum est incluse", "us": "US-102", "ca": "CA-102-1", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (borne inclusive)", "etapes": "Filtrer sur un budget minimum de 600 : l'offre à 600 exactement doit apparaître.", "attendu": "o1 (600 exactement), o2 (700), o3 (650), o6 (900)", "obtenu": ["o1", "o2", "o3", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-06", "titre": "Les résultats sont triés du score le plus haut au plus bas", "us": "US-103", "ca": "CA-103-1", "type": "fonctionnel", "priorite": "critique", "technique": "Cas de test fonctionnel", "etapes": "Trier la totalité des offres et vérifier la décroissance des scores.", "attendu": "scores décroissants, premier = 88", "obtenu": [88, 82, 78, 71, 60, 60, 55, 12], "attendu_valeur": [88, 82, 78, 71, 60, 60, 55, 12], "statut": "réussi", "message": null}, {"cas": "TC-08", "titre": "La page 1 affiche les 3 premiers résultats", "us": "US-104", "ca": "CA-104-1", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (index de page)", "etapes": "Appeler la recherche complète page 1 et comparer aux 3 premiers du tri.", "attendu": "o6, o1, o2", "obtenu": ["o6", "o1", "o2"], "attendu_valeur": ["o6", "o1", "o2"], "statut": "réussi", "message": null}, {"cas": "TC-12", "titre": "Filtres combinés télétravail + budget minimum", "us": "US-102", "ca": "CA-102-3", "type": "table de décision", "priorite": "majeur", "technique": "Test par tables de décisions (filtres combinés)", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": ["o1", "o2", "o6"], "attendu_valeur": ["o1"], "statut": "en échec", "message": "attendu ['o1'] — obtenu ['o1', 'o2', 'o6']"}], "synthese": {"executes": 5, "reussis": 3, "echecs": 2, "taux_reussite": 60.0, "par_type": {"limite": {"total": 3, "echecs": 1}, "fonctionnel": {"total": 1, "echecs": 0}, "table de décision": {"total": 1, "echecs": 1}}, "echecs_critiques": 1, "echecs_majeurs": 1, "echecs_mineurs": 0, "ids_en_echec": ["TC-03", "TC-12"]}}, "anomalies": [{"id": "AN-TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "exigence": "US-101 / CA-101-3", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "limite", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": ["o1", "o2", "o5", "o6"], "detecte_par": "TC-03", "technique": "Analyse des valeurs limites (casse)"}, {"id": "AN-TC-12", "titre": "Filtres combinés télétravail + budget minimum", "exigence": "US-102 / CA-102-3", "severite": "majeure", "priorite": "à corriger avant livraison", "type": "table de décision", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": ["o1", "o2", "o6"], "detecte_par": "TC-12", "technique": "Test par tables de décisions (filtres combinés)"}]}, "v2_regression": {"campagne": {"version": "v2", "version_libelle": "v1.1.0 — correctif après anomalies", "resultats": [{"cas": "TC-01", "titre": "Filtrer sur « remote » retourne uniquement les offres de type remote", "us": "US-101", "ca": "CA-101-1", "type": "fonctionnel", "priorite": "critique", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « remote », trier, comparer les identifiants obtenus.", "attendu": "o1 puis o5 (les deux offres de type remote)", "obtenu": ["o1", "o2", "o5", "o6"], "attendu_valeur": ["o1", "o5"], "statut": "en échec", "message": "attendu ['o1', 'o5'] — obtenu ['o1', 'o2', 'o5', 'o6']"}, {"cas": "TC-02", "titre": "Filtrer sur « fully_remote » retourne les offres correspondantes", "us": "US-101", "ca": "CA-101-2", "type": "fonctionnel", "priorite": "majeur", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « fully_remote », trier, comparer les identifiants obtenus.", "attendu": "o2 puis o6", "obtenu": ["o2", "o6"], "attendu_valeur": ["o2", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "us": "US-101", "ca": "CA-101-3", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (casse)", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": ["o1", "o2", "o5", "o6"], "attendu_valeur": ["o1", "o5"], "statut": "en échec", "message": "attendu ['o1', 'o5'] — obtenu ['o1', 'o2', 'o5', 'o6']"}, {"cas": "TC-04", "titre": "Une offre exactement au budget minimum est incluse", "us": "US-102", "ca": "CA-102-1", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (borne inclusive)", "etapes": "Filtrer sur un budget minimum de 600 : l'offre à 600 exactement doit apparaître.", "attendu": "o1 (600 exactement), o2 (700), o3 (650), o6 (900)", "obtenu": ["o1", "o2", "o3", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-05", "titre": "Les offres sans budget renseigné sont exclues", "us": "US-102", "ca": "CA-102-2", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (absence de valeur)", "etapes": "Filtrer sur un budget minimum de 0 : aucune offre sans budget ne doit apparaître.", "attendu": "o1 à o6 — jamais o7 ni o8 (budget absent)", "obtenu": ["o1", "o2", "o3", "o4", "o5", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o4", "o5", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-06", "titre": "Les résultats sont triés du score le plus haut au plus bas", "us": "US-103", "ca": "CA-103-1", "type": "fonctionnel", "priorite": "critique", "technique": "Cas de test fonctionnel", "etapes": "Trier la totalité des offres et vérifier la décroissance des scores.", "attendu": "scores décroissants, premier = 88", "obtenu": [88, 82, 78, 71, 60, 60, 55, 12], "attendu_valeur": [88, 82, 78, 71, 60, 60, 55, 12], "statut": "réussi", "message": null}, {"cas": "TC-07", "titre": "Deux offres à score égal sont départagées par identifiant", "us": "US-103", "ca": "CA-103-2", "type": "fonctionnel", "priorite": "mineur", "technique": "Cas de test fonctionnel", "etapes": "Vérifier l'ordre des deux offres à score 60 (o4 et o5).", "attendu": "o4 puis o5", "obtenu": ["o4", "o5"], "attendu_valeur": ["o4", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-08", "titre": "La page 1 affiche les 3 premiers résultats", "us": "US-104", "ca": "CA-104-1", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (index de page)", "etapes": "Appeler la recherche complète page 1 et comparer aux 3 premiers du tri.", "attendu": "o6, o1, o2", "obtenu": ["o6", "o1", "o2"], "attendu_valeur": ["o6", "o1", "o2"], "statut": "réussi", "message": null}, {"cas": "TC-09", "titre": "Une page au-delà du dernier résultat renvoie une liste vide", "us": "US-104", "ca": "CA-104-2", "type": "limite", "priorite": "mineur", "technique": "Analyse des valeurs limites (page hors plage)", "etapes": "Filtrer sur « hybrid » (2 offres) et demander la page 3.", "attendu": "liste vide", "obtenu": [], "attendu_valeur": [], "statut": "réussi", "message": null}, {"cas": "TC-10", "titre": "Filtrer sur « remote » ne doit pas retourner les offres fully_remote", "us": "US-101", "ca": "CA-101-1", "type": "régression", "priorite": "critique", "technique": "Test de régression (correctif du filtre)", "etapes": "Vérifier qu'aucune offre d'un autre type ne remonte dans le filtre « remote ».", "attendu": "aucune offre hors du type demandé", "obtenu": ["o2", "o6"], "attendu_valeur": [], "statut": "en échec", "message": "attendu [] — obtenu ['o2', 'o6']"}, {"cas": "TC-11", "titre": "Filtrer sur « onsite » ne retourne que les offres sur site", "us": "US-101", "ca": "CA-101-4", "type": "régression", "priorite": "majeur", "technique": "Test de régression (filtres voisins)", "etapes": "Vérifier le filtre « onsite » et les types retournés.", "attendu": "o4 puis o8", "obtenu": ["o4", "o8"], "attendu_valeur": ["o4", "o8"], "statut": "réussi", "message": null}, {"cas": "TC-12", "titre": "Filtres combinés télétravail + budget minimum", "us": "US-102", "ca": "CA-102-3", "type": "table de décision", "priorite": "majeur", "technique": "Test par tables de décisions (filtres combinés)", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": ["o1", "o2", "o6"], "attendu_valeur": ["o1"], "statut": "en échec", "message": "attendu ['o1'] — obtenu ['o1', 'o2', 'o6']"}], "synthese": {"executes": 12, "reussis": 8, "echecs": 4, "taux_reussite": 66.7, "par_type": {"fonctionnel": {"total": 4, "echecs": 1}, "limite": {"total": 5, "echecs": 1}, "régression": {"total": 2, "echecs": 1}, "table de décision": {"total": 1, "echecs": 1}}, "echecs_critiques": 3, "echecs_majeurs": 1, "echecs_mineurs": 0, "ids_en_echec": ["TC-01", "TC-03", "TC-10", "TC-12"]}}, "anomalies": [{"id": "AN-TC-01", "titre": "Filtrer sur « remote » retourne uniquement les offres de type remote", "exigence": "US-101 / CA-101-1", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "fonctionnel", "etapes": "Appliquer le filtre « remote », trier, comparer les identifiants obtenus.", "attendu": "o1 puis o5 (les deux offres de type remote)", "obtenu": ["o1", "o2", "o5", "o6"], "detecte_par": "TC-01", "technique": "Partition d'équivalence"}, {"id": "AN-TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "exigence": "US-101 / CA-101-3", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "limite", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": ["o1", "o2", "o5", "o6"], "detecte_par": "TC-03", "technique": "Analyse des valeurs limites (casse)"}, {"id": "AN-TC-10", "titre": "Filtrer sur « remote » ne doit pas retourner les offres fully_remote", "exigence": "US-101 / CA-101-1", "severite": "bloquante", "priorite": "à corriger avant livraison", "type": "régression", "etapes": "Vérifier qu'aucune offre d'un autre type ne remonte dans le filtre « remote ».", "attendu": "aucune offre hors du type demandé", "obtenu": ["o2", "o6"], "detecte_par": "TC-10", "technique": "Test de régression (correctif du filtre)"}, {"id": "AN-TC-12", "titre": "Filtres combinés télétravail + budget minimum", "exigence": "US-102 / CA-102-3", "severite": "majeure", "priorite": "à corriger avant livraison", "type": "table de décision", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": ["o1", "o2", "o6"], "detecte_par": "TC-12", "technique": "Test par tables de décisions (filtres combinés)"}], "criteres_sortie": {"criteres": [{"critere": "Tous les tests à priorité critique passent", "exige": "0 échec critique", "mesure": 3, "ok": false}, {"critere": "Aucune anomalie bloquante ou majeure ouverte", "exige": "0 anomalie ouverte", "mesure": 4, "ok": false}, {"critere": "Taux de réussite de la suite ≥ 100 %", "exige": "100 %", "mesure": "66.7 %", "ok": false}, {"critere": "Suite de régression exécutée à 100 %", "exige": "tous les tests de régression exécutés", "mesure": "2 tests de régression", "ok": true}, {"critere": "Traçabilité exigence → test complète", "exige": "chaque user story couverte", "mesure": "4/4 user stories couvertes", "ok": true}], "go": false}}, "v3_confirmation": {"campagne": {"version": "v3", "version_libelle": "v1.1.1 — correctif de la régression", "resultats": [{"cas": "TC-01", "titre": "Filtrer sur « remote » retourne uniquement les offres de type remote", "us": "US-101", "ca": "CA-101-1", "type": "fonctionnel", "priorite": "critique", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « remote », trier, comparer les identifiants obtenus.", "attendu": "o1 puis o5 (les deux offres de type remote)", "obtenu": ["o1", "o5"], "attendu_valeur": ["o1", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "us": "US-101", "ca": "CA-101-3", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (casse)", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": ["o1", "o5"], "attendu_valeur": ["o1", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-10", "titre": "Filtrer sur « remote » ne doit pas retourner les offres fully_remote", "us": "US-101", "ca": "CA-101-1", "type": "régression", "priorite": "critique", "technique": "Test de régression (correctif du filtre)", "etapes": "Vérifier qu'aucune offre d'un autre type ne remonte dans le filtre « remote ».", "attendu": "aucune offre hors du type demandé", "obtenu": [], "attendu_valeur": [], "statut": "réussi", "message": null}, {"cas": "TC-12", "titre": "Filtres combinés télétravail + budget minimum", "us": "US-102", "ca": "CA-102-3", "type": "table de décision", "priorite": "majeur", "technique": "Test par tables de décisions (filtres combinés)", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": ["o1"], "attendu_valeur": ["o1"], "statut": "réussi", "message": null}], "synthese": {"executes": 4, "reussis": 4, "echecs": 0, "taux_reussite": 100.0, "par_type": {"fonctionnel": {"total": 1, "echecs": 0}, "limite": {"total": 1, "echecs": 0}, "régression": {"total": 1, "echecs": 0}, "table de décision": {"total": 1, "echecs": 0}}, "echecs_critiques": 0, "echecs_majeurs": 0, "echecs_mineurs": 0, "ids_en_echec": []}}, "anomalies": []}, "v3_regression": {"campagne": {"version": "v3", "version_libelle": "v1.1.1 — correctif de la régression", "resultats": [{"cas": "TC-01", "titre": "Filtrer sur « remote » retourne uniquement les offres de type remote", "us": "US-101", "ca": "CA-101-1", "type": "fonctionnel", "priorite": "critique", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « remote », trier, comparer les identifiants obtenus.", "attendu": "o1 puis o5 (les deux offres de type remote)", "obtenu": ["o1", "o5"], "attendu_valeur": ["o1", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-02", "titre": "Filtrer sur « fully_remote » retourne les offres correspondantes", "us": "US-101", "ca": "CA-101-2", "type": "fonctionnel", "priorite": "majeur", "technique": "Partition d'équivalence", "etapes": "Appliquer le filtre « fully_remote », trier, comparer les identifiants obtenus.", "attendu": "o2 puis o6", "obtenu": ["o2", "o6"], "attendu_valeur": ["o2", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-03", "titre": "Un filtre saisi en majuscules donne le même résultat qu'en minuscules", "us": "US-101", "ca": "CA-101-3", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (casse)", "etapes": "Comparer le filtre « REMOTE » au filtre « remote ».", "attendu": "résultats identiques : o1 puis o5", "obtenu": ["o1", "o5"], "attendu_valeur": ["o1", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-04", "titre": "Une offre exactement au budget minimum est incluse", "us": "US-102", "ca": "CA-102-1", "type": "limite", "priorite": "critique", "technique": "Analyse des valeurs limites (borne inclusive)", "etapes": "Filtrer sur un budget minimum de 600 : l'offre à 600 exactement doit apparaître.", "attendu": "o1 (600 exactement), o2 (700), o3 (650), o6 (900)", "obtenu": ["o1", "o2", "o3", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-05", "titre": "Les offres sans budget renseigné sont exclues", "us": "US-102", "ca": "CA-102-2", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (absence de valeur)", "etapes": "Filtrer sur un budget minimum de 0 : aucune offre sans budget ne doit apparaître.", "attendu": "o1 à o6 — jamais o7 ni o8 (budget absent)", "obtenu": ["o1", "o2", "o3", "o4", "o5", "o6"], "attendu_valeur": ["o1", "o2", "o3", "o4", "o5", "o6"], "statut": "réussi", "message": null}, {"cas": "TC-06", "titre": "Les résultats sont triés du score le plus haut au plus bas", "us": "US-103", "ca": "CA-103-1", "type": "fonctionnel", "priorite": "critique", "technique": "Cas de test fonctionnel", "etapes": "Trier la totalité des offres et vérifier la décroissance des scores.", "attendu": "scores décroissants, premier = 88", "obtenu": [88, 82, 78, 71, 60, 60, 55, 12], "attendu_valeur": [88, 82, 78, 71, 60, 60, 55, 12], "statut": "réussi", "message": null}, {"cas": "TC-07", "titre": "Deux offres à score égal sont départagées par identifiant", "us": "US-103", "ca": "CA-103-2", "type": "fonctionnel", "priorite": "mineur", "technique": "Cas de test fonctionnel", "etapes": "Vérifier l'ordre des deux offres à score 60 (o4 et o5).", "attendu": "o4 puis o5", "obtenu": ["o4", "o5"], "attendu_valeur": ["o4", "o5"], "statut": "réussi", "message": null}, {"cas": "TC-08", "titre": "La page 1 affiche les 3 premiers résultats", "us": "US-104", "ca": "CA-104-1", "type": "limite", "priorite": "majeur", "technique": "Analyse des valeurs limites (index de page)", "etapes": "Appeler la recherche complète page 1 et comparer aux 3 premiers du tri.", "attendu": "o6, o1, o2", "obtenu": ["o6", "o1", "o2"], "attendu_valeur": ["o6", "o1", "o2"], "statut": "réussi", "message": null}, {"cas": "TC-09", "titre": "Une page au-delà du dernier résultat renvoie une liste vide", "us": "US-104", "ca": "CA-104-2", "type": "limite", "priorite": "mineur", "technique": "Analyse des valeurs limites (page hors plage)", "etapes": "Filtrer sur « hybrid » (2 offres) et demander la page 3.", "attendu": "liste vide", "obtenu": [], "attendu_valeur": [], "statut": "réussi", "message": null}, {"cas": "TC-10", "titre": "Filtrer sur « remote » ne doit pas retourner les offres fully_remote", "us": "US-101", "ca": "CA-101-1", "type": "régression", "priorite": "critique", "technique": "Test de régression (correctif du filtre)", "etapes": "Vérifier qu'aucune offre d'un autre type ne remonte dans le filtre « remote ».", "attendu": "aucune offre hors du type demandé", "obtenu": [], "attendu_valeur": [], "statut": "réussi", "message": null}, {"cas": "TC-11", "titre": "Filtrer sur « onsite » ne retourne que les offres sur site", "us": "US-101", "ca": "CA-101-4", "type": "régression", "priorite": "majeur", "technique": "Test de régression (filtres voisins)", "etapes": "Vérifier le filtre « onsite » et les types retournés.", "attendu": "o4 puis o8", "obtenu": ["o4", "o8"], "attendu_valeur": ["o4", "o8"], "statut": "réussi", "message": null}, {"cas": "TC-12", "titre": "Filtres combinés télétravail + budget minimum", "us": "US-102", "ca": "CA-102-3", "type": "table de décision", "priorite": "majeur", "technique": "Test par tables de décisions (filtres combinés)", "etapes": "Appliquer « remote » et budget 600 : la combinaison des deux règles doit tenir.", "attendu": "o1 uniquement (de type remote et à 600 exactement)", "obtenu": ["o1"], "attendu_valeur": ["o1"], "statut": "réussi", "message": null}], "synthese": {"executes": 12, "reussis": 12, "echecs": 0, "taux_reussite": 100.0, "par_type": {"fonctionnel": {"total": 4, "echecs": 0}, "limite": {"total": 5, "echecs": 0}, "régression": {"total": 2, "echecs": 0}, "table de décision": {"total": 1, "echecs": 0}}, "echecs_critiques": 0, "echecs_majeurs": 0, "echecs_mineurs": 0, "ids_en_echec": []}}, "anomalies": [], "criteres_sortie": {"criteres": [{"critere": "Tous les tests à priorité critique passent", "exige": "0 échec critique", "mesure": 0, "ok": true}, {"critere": "Aucune anomalie bloquante ou majeure ouverte", "exige": "0 anomalie ouverte", "mesure": 0, "ok": true}, {"critere": "Taux de réussite de la suite ≥ 100 %", "exige": "100 %", "mesure": "100.0 %", "ok": true}, {"critere": "Suite de régression exécutée à 100 %", "exige": "tous les tests de régression exécutés", "mesure": "2 tests de régression", "ok": true}, {"critere": "Traçabilité exigence → test complète", "exige": "chaque user story couverte", "mesure": "4/4 user stories couvertes", "ok": true}], "go": true}}, "regressions_nouvelles": ["TC-01", "TC-10"]}, "genere_le": "17/09/2026 01:29:57"};
+window.__SCENARIO__ = __SCENARIO_JSON__;
+
+async function charger() {
+  S = window.__SCENARIO__;
+  document.getElementById('pied').innerHTML =
+    'Démonstration statique (GitHub Pages) — scénario exécuté le ' + S.genere_le + ' · ' + S.cas.length + ' cas de test conçus · ' +
+    '3 livraisons simulées · Les résultats affichés proviennent de campagnes réellement exécutées.' +
+    '<br>Référentiels cités : ISTQB CTFL (processus, techniques, gestion des anomalies) et ISTQB CT-AI ' +
+    '(test des systèmes à base d\'IA, chapitres 7 à 9).';
+  construire();
+}
+
+function compter(type) {
+  return S.cas.filter(c => c.type === type).length;
+}
+
+function esc(t) {
+  return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function construire() {
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = S.etapes.map(e => `
+    <div class="etape hidden" id="e${e.n}">
+      <div class="etape-hdr">
+        <div class="etape-n">${e.n}</div>
+        <span class="acteur ${classeActeur(e.acteur)}">${esc(e.acteur)}</span>
+        <div class="titre">${esc(e.activite)}</div>
+      </div>
+      <div class="etape-corps">
+        <div class="syllabus"><i class="fas fa-book"></i> ${esc(e.syllabus)}</div>
+        <div id="c${e.n}"></div>
+      </div>
+    </div>`).join('');
+  majJauge();
+}
+
+function classeActeur(a) {
+  const x = (a || '').toLowerCase();
+  if (x.includes('qa')) return 'qa';
+  if (x.includes('dev')) return 'dev';
+  return '';
+}
+
+function majJauge() {
+  document.getElementById('prog').textContent = 'Étape ' + Math.min(etape, TOTAL) + ' / ' + TOTAL;
+  document.getElementById('jauge').style.width = (100 * (etape - 1) / TOTAL) + '%';
+}
+
+function etapeSuivante() {
+  if (etape > TOTAL) return;
+  rendre(etape);
+  document.getElementById('e' + etape).classList.remove('hidden');
+  document.getElementById('e' + etape).scrollIntoView({behavior: 'smooth', block: 'start'});
+  etape++;
+  majJauge();
+}
+
+function toutDerouler() {
+  while (etape <= TOTAL) { rendre(etape); document.getElementById('e' + etape).classList.remove('hidden'); etape++; }
+  majJauge();
+}
+
+function reinitialiser() {
+  etape = 1;
+  construire();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function rendre(n) {
+  const z = document.getElementById('c' + n);
+  if (z.dataset.fait === '1') return;
+  z.dataset.fait = '1';
+  z.innerHTML = CONTENU[n]();
+}
+
+function tableResultats(campagne, idsRegression) {
+  const reg = new Set(idsRegression || []);
+  return `<div class="boite"><table class="cd">
+    <thead><tr><th>Cas</th><th>Exigence</th><th>Technique</th><th>Priorité</th><th>Résultat</th><th>Attendu</th><th>Obtenu</th></tr></thead>
+    <tbody>${campagne.resultats.map(r => {
+      const ko = r.statut === 'en échec';
+      const cls = reg.has(r.cas) ? 'regression' : (ko ? 'ko' : '');
+      const chip = ko ? '<span class="chip ko">en échec</span>' : '<span class="chip ok">réussi</span>';
+      const extra = reg.has(r.cas) ? ' <span class="chip ko">régression</span>' : '';
+      const attendu = '<span class="mono">' + esc(JSON.stringify(r.attendu_valeur)) + '</span>';
+      const obtenu = ko
+        ? '<span class="mono" style="color:var(--red)">' + esc(JSON.stringify(r.obtenu)) + '</span>'
+        : '<span class="gris mono">conforme</span>';
+      return `<tr class="${cls}"><td class="mono">${r.cas}</td><td class="mono">${esc(r.us)} / ${esc(r.ca)}</td>
+        <td>${esc(r.technique)}</td><td>${esc(r.priorite)}</td><td>${chip}${extra}</td>
+        <td>${attendu}</td><td>${obtenu}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function bilan(s) {
+  return `<div class="bilan">
+    <div class="b info"><span class="n">${s.executes}</span><span class="l">tests exécutés</span></div>
+    <div class="b ok"><span class="n">${s.reussis}</span><span class="l">réussis</span></div>
+    <div class="b ko"><span class="n">${s.echecs}</span><span class="l">en échec</span></div>
+    <div class="b ${s.taux_reussite === 100 ? 'ok' : 'ko'}"><span class="n">${s.taux_reussite} %</span>
+      <span class="l">taux de réussite</span></div>
+  </div>
+  <div class="gris" style="font-size:.74rem;margin:-.3rem 0 .7rem;">
+    Le critère de sortie fixé avant la campagne exige 100 % : tout taux inférieur est un critère non satisfait,
+    affiché en rouge pour cette raison — ce n'est pas un jugement sur la qualité du travail du développeur.
+  </div>`;
+}
+
+function tableAnomalies(anomalies) {
+  if (!anomalies.length) return '<div class="alerte ok">Aucune anomalie ouverte.</div>';
+  return anomalies.map(a => `
+    <div class="boite" style="margin-bottom:.5rem;">
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.35rem;">
+        <strong class="mono">${a.id}</strong>
+        <span class="chip ${a.severite === 'bloquante' ? 'ko' : 'warn'}">sévérité ${esc(a.severite)}</span>
+        <span class="chip neutre">${esc(a.priorite)}</span>
+        <span class="chip neutre">${esc(a.type)}</span>
+        <span class="chip neutre">détectée par ${esc(a.detecte_par)}</span>
+      </div>
+      <div style="font-size:.85rem;font-weight:600;margin-bottom:.3rem;">${esc(a.titre)}</div>
+      <div class="gris" style="font-size:.78rem;line-height:1.55;">
+        Exigence : ${esc(a.exigence)} · Technique : ${esc(a.technique)}<br>
+        Étapes : ${esc(a.etapes)}<br>
+        Résultat attendu : <span class="mono">${esc(a.attendu)}</span><br>
+        Résultat obtenu : <span class="mono">${esc(JSON.stringify(a.obtenu))}</span>
+      </div>
+    </div>`).join('');
+}
+
+function tableCriteres(c) {
+  return `<div class="boite"><table class="cd">
+    <thead><tr><th>Critère de sortie</th><th>Exigence</th><th>Mesure</th><th>Verdict</th></tr></thead>
+    <tbody>${c.criteres.map(x => `<tr>
+      <td>${esc(x.critere)}</td><td class="gris">${esc(x.exige)}</td><td class="mono">${esc(x.mesure)}</td>
+      <td>${x.ok ? '<span class="chip ok">satisfait</span>' : '<span class="chip ko">non satisfait</span>'}</td>
+    </tr>`).join('')}</tbody></table></div>
+    <div class="alerte ${c.go ? 'ok' : 'danger'}" style="margin-top:.7rem;">
+      <strong>${c.go ? 'GO' : 'NO-GO'}</strong> — ${c.go
+        ? 'tous les critères de sortie sont satisfaits : la mise en production est décidée sur des faits.'
+        : 'au moins un critère de sortie n\'est pas satisfait : la livraison repart en correction.'}
+    </div>`;
+}
+
+const CONTENU = {
+  1: () => {
+    const d = S.demande;
+    return `
+      <div class="boite">
+        <div style="font-size:.78rem;" class="gris"><span class="mono">${d.id}</span> · ${esc(d.demandeur)}</div>
+        <div style="font-weight:700;margin:.35rem 0 .5rem;">${esc(d.titre)}</div>
+        <div style="line-height:1.6;font-size:.84rem;">${esc(d.contexte)}</div>
+        <div style="margin-top:.6rem;font-size:.83rem;">
+          <strong>Valeur attendue :</strong> ${esc(d.valeur_attendue)}<br>
+          <strong>Périmètre :</strong> ${esc(d.perimetre)}<br>
+          <strong>Hors périmètre :</strong> ${esc(d.hors_perimetre)}<br>
+          <strong>Indicateurs de succès :</strong> ${d.indicateurs.map(esc).join(' · ')}
+        </div>
+      </div>
+      <div class="alerte" style="margin-top:.7rem;">
+        <strong>Ce que le QA regarde d'abord :</strong> la demande est-elle assez précise pour être testée ?
+        Ici, trois éléments manquent et devront être obtenus avant la conception : le vocabulaire exact des
+        types de télétravail acceptés par la source de données, la règle de comparaison du budget
+        (inclusif ou non) et le nombre de résultats par page. Sans ces réponses, aucun critère
+        d'acceptation n'est vérifiable — et un critère non vérifiable ne se teste pas.
+      </div>`;
+  },
+
+  2: () => `
+    ${S.user_stories.map(us => `
+      <div class="us-carte">
+        <div class="t"><span class="mono">${us.id}</span> · ${esc(us.titre)}</div>
+        <div class="recit">${esc(us.recit)}</div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.4rem;">
+          <span class="chip neutre">priorité ${esc(us.priorite)}</span>
+          <span class="chip neutre">valeur métier ${us.valeur_metier}/5</span>
+          <span class="chip ${us.risque >= 4 ? 'warn' : 'neutre'}">risque produit ${us.risque}/5</span>
+        </div>
+        <div class="gris" style="font-size:.78rem;margin-bottom:.35rem;">${esc(us.risque_justification)}</div>
+        <ul>${us.criteres.map(c => `<li><span class="mono">${c.id}</span> — Étant donné ${esc(c.etant_donne)},
+          quand ${esc(c.quand)}, alors ${esc(c.alors)}</li>`).join('')}</ul>
+      </div>`).join('')}
+    <div class="alerte">
+      <strong>Ce que le QA valide ici :</strong> chaque critère est écrit sous forme
+      <em>Étant donné / Quand / Alors</em>, donc directement traduisible en cas de test. Un critère
+      du type « le filtre doit être rapide et fiable » n'aurait pas été accepté : il n'est pas mesurable.
+    </div>`,
+
+  3: () => `
+    <div class="boite" style="margin-bottom:.7rem;"><table class="cd">
+      <thead><tr><th>User story</th><th>Valeur métier</th><th>Risque produit</th><th>Priorité de test</th><th>Justification du risque</th></tr></thead>
+      <tbody>${S.user_stories.map(us => {
+        const critique = us.risque >= 4 || us.valeur_metier >= 5;
+        return `<tr><td class="mono">${us.id}</td><td>${us.valeur_metier}/5</td><td>${us.risque}/5</td>
+          <td>${critique ? '<span class="chip ko">critique</span>' : '<span class="chip neutre">majeur</span>'}</td>
+          <td class="gris">${esc(us.risque_justification)}</td></tr>`;
+      }).join('')}</tbody></table></div>
+    <div class="boite" style="margin-bottom:.7rem;"><table class="cd">
+      <thead><tr><th>Type de cas</th><th>Nombre conçu</th><th>Ce que ce type cherche</th></tr></thead>
+      <tbody>
+        <tr><td>Fonctionnel</td><td class="mono">${compter('fonctionnel')}</td><td class="gris">le comportement nominal de chaque règle</td></tr>
+        <tr><td>Analyse des valeurs limites</td><td class="mono">${compter('limite')}</td><td class="gris">les bornes : budget exact, casse, index de page, page hors plage</td></tr>
+        <tr><td>Table de décision</td><td class="mono">${compter('table de décision')}</td><td class="gris">la combinaison de deux filtres appliqués ensemble</td></tr>
+        <tr><td>Régression</td><td class="mono">${compter('régression')}</td><td class="gris">ce qui marchait et doit continuer de marcher</td></tr>
+      </tbody></table></div>
+    <div class="alerte">
+      <strong>Critères d'entrée et de sortie fixés AVANT l'exécution</strong> — c'est la règle qui empêche
+      de « décider au feeling » à la fin : tous les tests critiques passent · aucune anomalie bloquante ou
+      majeure ouverte · taux de réussite de la suite à 100 % · suite de régression exécutée en totalité ·
+      traçabilité exigence → test complète.
+    </div>`,
+
+  4: () => `
+    <div class="boite" style="margin-bottom:.7rem;"><table class="cd">
+      <thead><tr><th>Exigence</th><th>Critère d'acceptation</th><th>Cas de test</th><th>Technique</th></tr></thead>
+      <tbody>${S.tracabilite.map(l => `<tr>
+        <td class="mono">${l.us}</td><td style="max-width:420px;">${esc(l.enonce)}</td>
+        <td class="mono">${l.cas.join(', ') || '—'}</td><td class="gris">${esc(l.technique)}</td></tr>`).join('')}
+      </tbody></table></div>
+    <div class="boite"><table class="cd">
+      <thead><tr><th>Cas</th><th>Type</th><th>Priorité</th><th>Technique</th><th>Titre</th></tr></thead>
+      <tbody>${S.cas.map(c => `<tr><td class="mono">${c.id}</td><td>${esc(c.type)}</td>
+        <td>${esc(c.priorite)}</td><td class="gris">${esc(c.technique)}</td><td>${esc(c.titre)}</td></tr>`).join('')}
+      </tbody></table></div>
+    <div class="alerte">
+      <strong>Tracez, toujours :</strong> chaque cas est rattaché à une user story <em>et</em> à un critère
+      d'acceptation. C'est cette matrice qui permet, à la fin, d'affirmer sans approximation ce qui est
+      couvert — et d'écrire « non couvert » là où rien n'a été conçu.
+    </div>`,
+
+  5: () => {
+    const c = S.campagnes.v1_execution;
+    return `
+      <div class="gris" style="font-size:.83rem;margin-bottom:.5rem;">
+        Livraison testée : <span class="mono">${esc(c.campagne.version_libelle)}</span> —
+        ${esc(S.versions.v1.note)}
+      </div>
+      ${bilan(c.campagne.synthese)}
+      ${tableResultats(c.campagne)}
+      <div class="alerte danger">
+        <strong>Campagne terminée : ${c.campagne.synthese.echecs} tests en échec sur ${c.campagne.synthese.executes}.</strong>
+        Les échecs ne sont pas répartis au hasard : ils se concentrent sur les règles de comparaison
+        (borne du budget, casse du filtre), sur le sens du tri et sur l'index de pagination.
+        Le nombre de tests touchés par un même défaut indique aussi sa portée.
+      </div>`;
+  },
+
+  6: () => {
+    const c = S.campagnes.v1_execution;
+    return `
+      <div class="gris" style="font-size:.83rem;margin-bottom:.5rem;">
+        ${c.anomalies.length} anomalies rédigées à partir des échecs réels, chacune traçable jusqu'au
+        critère d'acceptation qu'elle met en défaut.
+      </div>
+      ${tableAnomalies(c.anomalies)}
+      <div class="alerte">
+        <strong>Un bon rapport d'anomalie contient :</strong> identifiant, titre, exigence, sévérité,
+        priorité, étapes de reproduction, résultat attendu, résultat obtenu, cas de test qui l'a détectée et
+        technique employée. Sans les deux derniers, le développeur ne peut pas rejouer le défaut.
+        Sévérité = impact sur le produit ; priorité = urgence de correction. Les deux ne se confondent pas.
+      </div>`;
+  },
+
+  7: () => `
+    <div class="boite">
+      <div style="font-weight:700;margin-bottom:.4rem;">${esc(S.versions.v2.libelle)} — livrée à ${esc(S.versions.v2.date)}</div>
+      <div style="font-size:.84rem;line-height:1.6;">${esc(S.versions.v2.note)}</div>
+      <div class="gris" style="font-size:.8rem;margin-top:.5rem;">
+        Le développeur annonce avoir corrigé les ${S.campagnes.v1_execution.anomalies.length} anomalies.
+        Une annonce n'est pas une preuve : c'est le test de confirmation qui va le dire.
+      </div>
+    </div>
+    <div class="alerte">
+      <strong>Le piège classique :</strong> ne rejouer que les tests qui échouaient. C'est nécessaire, mais
+      insuffisant — un correctif peut réparer ce qu'il visait et casser ce qui fonctionnait. La campagne
+      suivante (régression) existe exactement pour ça.
+    </div>`,
+
+  8: () => {
+    const c = S.campagnes.v2_confirmation;
+    return `
+      <div class="gris" style="font-size:.83rem;margin-bottom:.5rem;">
+        Seuls les tests en échec sur v1.0.0 sont rejoués : ${c.campagne.resultats.map(r => r.cas).join(', ')}.
+      </div>
+      ${bilan(c.campagne.synthese)}
+      ${tableResultats(c.campagne)}
+      <div class="alerte ${c.campagne.synthese.echecs ? 'danger' : 'ok'}">
+        <strong>Confirmation : ${c.campagne.synthese.reussis} cas réparés sur ${c.campagne.synthese.executes}.</strong>
+        ${c.campagne.synthese.echecs
+          ? 'Deux anomalies restent ouvertes : le correctif est incomplet. La livraison ne peut pas partir en production.'
+          : 'Toutes les anomalies sont fermées.'}
+      </div>`;
+  },
+
+  9: () => {
+    const c = S.campagnes.v2_regression;
+    const reg = S.campagnes.regressions_nouvelles;
+    return `
+      <div class="gris" style="font-size:.83rem;margin-bottom:.5rem;">
+        Toute la suite est rejouée sur v1.1.0, y compris les tests qui passaient déjà.
+      </div>
+      ${bilan(c.campagne.synthese)}
+      ${tableResultats(c.campagne, reg)}
+      <div class="alerte danger">
+        <strong>Régression détectée : ${reg.length} tests qui passaient sur v1.0.0 échouent maintenant
+        (${reg.join(', ')}).</strong><br>
+        Ces tests <em>ne faisaient pas partie</em> de la campagne de confirmation : sans la régression,
+        la régression serait passée inaperçue jusqu'en production. C'est la démonstration la plus
+        importante de cette page : <strong>confirmation ≠ régression</strong>.
+      </div>`;
+  },
+
+  10: () => `
+    <div class="boite">
+      <div style="font-weight:700;margin-bottom:.4rem;">${esc(S.versions.v3.libelle)} — livrée à ${esc(S.versions.v3.date)}</div>
+      <div style="font-size:.84rem;line-height:1.6;">${esc(S.versions.v3.note)}</div>
+      <div class="gris" style="font-size:.8rem;margin-top:.5rem;">
+        La cause racine était la recherche par sous-chaîne : « remote » se retrouvait à l'intérieur de
+        « fully_remote ». Le correctif compare désormais des familles de valeurs normalisées, ce qui traite
+        la casse et les libellés sans élargir la règle.
+      </div>
+    </div>
+    <div class="alerte">
+      <strong>Ce qu'un bon rapport d'anomalie a apporté ici :</strong> le cas de test qui a détecté la
+      régression (${S.campagnes.regressions_nouvelles.join(', ')}) désignait précisément la règle fautive,
+      ce qui a évité une correction à l'aveugle.
+    </div>`,
+
+  11: () => {
+    const conf = S.campagnes.v3_confirmation;
+    const reg = S.campagnes.v3_regression;
+    return `
+      <div style="font-weight:700;font-size:.88rem;margin-bottom:.35rem;">Test de confirmation</div>
+      ${bilan(conf.campagne.synthese)}
+      ${tableResultats(conf.campagne)}
+      <div style="font-weight:700;font-size:.88rem;margin:.9rem 0 .35rem;">Test de régression complet</div>
+      ${bilan(reg.campagne.synthese)}
+      ${tableResultats(reg.campagne)}
+      <div class="alerte ok">
+        <strong>Aucun échec sur les deux campagnes.</strong> La suite complète (${reg.campagne.synthese.executes}
+        cas) est verte, y compris les trois tests de régression.
+      </div>`;
+  },
+
+  12: () => {
+    const c = S.campagnes.v3_regression;
+    const v1 = S.campagnes.v1_execution.anomalies.length;
+    const v2 = S.campagnes.v2_regression.anomalies.length;
+    const reg = S.campagnes.regressions_nouvelles.length;
+    return `
+      ${tableCriteres(c.criteres_sortie)}
+      <div style="font-weight:700;font-size:.9rem;margin:1rem 0 .4rem;">Rapport de clôture</div>
+      <div class="boite">
+        <table class="cd"><tbody>
+          <tr><td>Demande métier</td><td class="mono">${esc(S.demande.id)}</td></tr>
+          <tr><td>Livraisons reçues</td><td class="mono">3 (v1.0.0, v1.1.0, v1.1.1)</td></tr>
+          <tr><td>Cas de test conçus</td><td class="mono">${S.cas.length}</td></tr>
+          <tr><td>Anomalies détectées</td><td class="mono">${v1} en exécution + ${reg} en régression = ${v1 + reg}</td></tr>
+          <tr><td>Anomalies corrigées et vérifiées</td><td class="mono">${v1 + reg} / ${v1 + reg}</td></tr>
+          <tr><td>Campagnes exécutées</td><td class="mono">5 (exécution v1, confirmation v2, régression v2, confirmation v3, régression v3)</td></tr>
+          <tr><td>Couverture des exigences</td><td class="mono">${S.user_stories.length} / ${S.user_stories.length} user stories,
+            ${S.tracabilite.length} / ${S.tracabilite.length} critères d'acceptation</td></tr>
+          <tr><td>Décision</td><td><span class="chip ok">GO production</span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="alerte">
+        <strong>Ce que cette livraison enseigne, en trois lignes :</strong>
+        un défaut de conception se détecte par la technique, pas par la chance (la borne du budget
+        exactement au seuil a été trouvée par l'analyse des valeurs limites) ·
+        la correction d'un défaut peut en créer un autre, donc la régression n'est pas optionnelle ·
+        et la décision de livrer se prend sur des critères écrits à l'avance, pas sur une impression.
+      </div>`;
+  },
+};
+
+charger();
+</script>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body>
+</html>

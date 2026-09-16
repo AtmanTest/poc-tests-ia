@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test logiciel et test d'IA — démonstrations exécutées</title>
+<meta name="description" content="Cycle de vie complet, chaîne de livraison avec anomalies et verdict GO, test d'un moteur de classement : tous les chiffres proviennent d'exécutions réelles.">
+<link rel="stylesheet" href="static/site.css">
+<style>
+  .acc { max-width: 1000px; margin: 2rem auto 4rem; padding: 0 1.2rem; }
+  h1 { font-size: 1.7rem; line-height: 1.25; }
+  .sous { color: var(--text-dim); line-height: 1.7; }
+  .grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 1.6rem 0; }
+  .carte { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.2rem; }
+  .carte h2 { font-size: 1.02rem; margin: 0 0 .4rem; }
+  .carte p { color: var(--text-dim); font-size: .84rem; line-height: 1.6; margin: 0 0 .7rem; }
+  .carte a { font-weight: 700; }
+  .kpis { display: flex; gap: .7rem; flex-wrap: wrap; margin: 1.4rem 0; }
+  .kpi { flex: 1 1 140px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: .8rem .9rem; }
+  .kpi .n { font-size: 1.5rem; font-weight: 800; display: block; }
+  .kpi .l { font-size: .68rem; text-transform: uppercase; letter-spacing: .4px; color: #c9d1d9; font-weight: 600; }
+  ul.liste { line-height: 1.9; }
+  footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
+            color: var(--text-dim); font-size: .78rem; line-height: 1.7; }
+</style></head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a class="actif" href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <section class="heros">
+    <div class="oeil">Démonstrations · tous les chiffres sortent d'exécutions réelles</div>
+    <h1>Le test logiciel et le test d'IA, <span class="gradient">montrés plutôt que racontés</span></h1>
+    <p class="chapo">
+      Trois parcours construits sur les référentiels <strong>ISTQB CTFL v4.0.1</strong> (processus, techniques,
+      anomalies), <strong>CT-AI v1.0.1</strong> (test des systèmes à base d'IA) et <strong>CT-GenAI v1.1</strong>
+      (test avec l'IA générative). Chaque chiffre affiché provient d'une exécution : suites de tests jouées,
+      scénarios navigateur dans un vrai Chromium, métriques mesurées sur un corpus étiqueté, couverture calculée.
+    </p>
+    <div class="etiquettes">
+      <span class="etiquette vif">10/10 scénarios navigateur</span>
+      <span class="etiquette">Gherkin + Playwright</span>
+      <span class="etiquette">pytest · coverage.py · Flask</span>
+      <span class="etiquette">CTFL · CT-AI · CT-GenAI</span>
+    </div>
+
+    <div class="chiffres">
+      <div class="chiffre"><span class="valeur cyan">63</span>
+        <span class="legende">tests exécutés, 0 échec</span></div>
+      <div class="chiffre"><span class="valeur violet">1.0</span>
+        <span class="legende">précision · seuil 40</span></div>
+      <div class="chiffre"><span class="valeur emeraude">0.917</span>
+        <span class="legende">rappel · métrique clé</span></div>
+      <div class="chiffre"><span class="valeur ambre">8</span>
+        <span class="legende">défauts corrigés, avant/après mesuré</span></div>
+      <div class="chiffre"><span class="valeur cyan">12</span>
+        <span class="legende">cas joués sur la chaîne de livraison</span></div>
+    </div>
+  </section>
+
+  <div class="grille">
+    <div class="carte">
+      <div class="num-carte">PARCOURS 01</div>
+      <h2>Cycle de vie complet de JobHunt</h2>
+      <p>
+        Une fonctionnalité réelle suivie de bout en bout : demande métier, user stories, stratégie de test,
+        développement piloté par les tests (sorties console réelles), exécution des campagnes
+        (unitaire, intégration, scénarios métier, navigateur), anomalies, corrections extraites de
+        l'historique Git, non-régression mesurée, couverture calculée, intégration continue et
+        amélioration continue. Chaque étape est rattachée aux référentiels CTFL, CT-AI et CT-GenAI.
+      </p>
+      <a class="lien" href="cycle-de-vie.html">Ouvrir le cycle de vie →</a>
+    </div>
+    <div class="carte">
+      <div class="num-carte">PARCOURS 02</div>
+      <h2>Chaîne de livraison virtuelle</h2>
+      <p>
+        Une demande métier, des user stories, une analyse de risque, douze cas de test conçus, une livraison
+        défectueuse, des anomalies, un correctif… qui casse ailleurs — puis le second correctif et le verdict
+        GO. Douze étapes jouables, campagnes réellement exécutées.
+      </p>
+      <a class="lien" href="chaine-de-livraison.html">Ouvrir la chaîne de livraison →</a>
+    </div>
+    <div class="carte">
+      <div class="num-carte">PARCOURS 03</div>
+      <h2>Vitrine du test d'IA</h2>
+      <p>
+        Le moteur de classement pris comme système à tester : matrice de confusion et seuils verrouillés,
+        dix relations métamorphiques, entrées adverses, huit défauts trouvés puis corrigés avec l'avant/après
+        mesuré, et les limites assumées du dispositif.
+      </p>
+      <a class="lien" href="vitrine-ct-ai.html">Ouvrir la vitrine →</a>
+    </div>
+  </div>
+
+  <section class="sec">
+    <div class="sec-tete"><div class="sec-num">06</div><h2>Dossier de portes — la démarche écrite</h2></div>
+    <p class="sous">Les six portes de qualité du processus, rédigées avant l'exécution : cadrage du risque,
+      qualité des données, métriques et seuils verrouillés, plan de test, techniques appliquées, journal
+      d'usage de l'IA.</p>
+    <div class="panneau">
+      <ul class="propre">
+        <li><a href="01-cadrage-risque-ia.html">Porte 1 — Cadrage du risque IA</a></li><li><a href="02-qualite-donnees.html">Porte 2 — Qualité des données</a></li><li><a href="03-metriques-seuils.html">Porte 3 — Métriques et seuils verrouillés</a></li><li><a href="04-plan-de-test.html">Porte 4 — Plan de test</a></li><li><a href="05-techniques.html">Porte 5 — Techniques appliquées</a></li><li><a href="06-journal-aide-ia.html">Porte 6 — Journal d'usage de l'IA</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="note">
+    Pages figées le 17/09/2026 01:30:08 · Python 3.12.8 ·
+    pytest 9.0.3 · Flask 3.1.3. Les pages statiques ne
+    ré-exécutent pas les campagnes : les exemples du banc d'essai sont précalculés par le même moteur, et
+    chaque résultat affiché est un résultat d'exécution réel.
+  </div>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte 6 — Journal d'usage de l'IA — JobHunt</title>
+<link rel="stylesheet" href="static/site.css">
+</head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a class="actif" href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <div class="oeil">Portes de qualité · la démarche écrite</div>
+  <h1>Porte 6 — Journal d'usage de l'IA</h1>
+  <div class="panneau doc" style="margin-top:1.2rem;"><h1 id="porte-6-ia-au-service-du-test-usage-reel-et-limites">Porte 6 — IA au service du test : usage réel et limites</h1>
+<p>Le syllabus (ch. 11) traite l'IA <strong>comme outil du testeur</strong>, avec ses limites. Ce
+document journalise l'usage effectif sur ce PoC, sans complaisance.</p>
+<h2 id="ce-qui-a-ete-produit-avec-laide-dune-ia">Ce qui a été produit avec l'aide d'une IA</h2>
+<table>
+<thead>
+<tr>
+<th>Activité</th>
+<th>Outil</th>
+<th>Contrôle humain appliqué</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rédaction du premier jet de la suite <code>tests/test_ct_ai_gates.py</code></td>
+<td>agent IA</td>
+<td>relecture ligne par ligne, exécution réelle, chaque assertion validée ou corrigée</td>
+</tr>
+<tr>
+<td>Génération du corpus étiqueté (24 offres synthétiques)</td>
+<td>agent IA</td>
+<td><strong>règle d'étiquetage écrite avant</strong> la génération, puis appliquée à la main offre par offre</td>
+</tr>
+<tr>
+<td>Extraction du syllabe CT-AI en fichiers de référence</td>
+<td>agent IA</td>
+<td>comparaison automatique des objectifs d'apprentissage et des définitions au PDF d'origine ; zones non extraites déclarées</td>
+</tr>
+<tr>
+<td>Détection des défauts (casse, sous-chaîne, marchés)</td>
+<td>agent IA + exécution</td>
+<td>chaque défaut reproduit par un test <strong>avant</strong> correction, puis revérifié après</td>
+</tr>
+</tbody>
+</table>
+<h2 id="ce-que-lia-a-produit-et-qui-a-du-etre-corrige">Ce que l'IA a produit et qui a dû être corrigé</h2>
+<table>
+<thead>
+<tr>
+<th>Production IA</th>
+<th>Défaut</th>
+<th>Traitement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Assertions de valeurs limites sur le TJM</td>
+<td>écrites d'après l'ancien comportement (marché français par défaut)</td>
+<td>assertion corrigée <strong>et</strong> attente documentée : un marché inconnu ne produit plus de comparaison</td>
+</tr>
+<tr>
+<td>Test de stabilité du classement</td>
+<td>le test rejouait un tri naïf, pas la règle réelle de l'application</td>
+<td>test réécrit sur la règle documentée (score décroissant, identifiant croissant)</td>
+</tr>
+<tr>
+<td>Corpus étiqueté</td>
+<td>risques de biais de génération (formulations trop typiques)</td>
+<td>limite déclarée en porte 3 ; passage à un corpus réel échantillonné requis avant tout relèvement de seuil</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Aucun test n'a été accepté sur la seule affirmation d'un modèle.</strong> Les tests qui ont
+révélé des défauts l'ont fait par <strong>exécution réelle</strong> ; les tests qui passaient pour de
+mauvaises raisons ont été corrigés.</p>
+<h2 id="limites-et-risques-assumes-de-laide-ia">Limites et risques assumés de l'aide IA</h2>
+<ul>
+<li><strong>Biais du modèle</strong> : les cas générés ressemblent au style des offres francophones
+  déjà connues → le corpus sous-représente les offres anglophones et les intitulés
+  locaux. Conséquence directe sur la mesure du rappel.</li>
+<li><strong>Dépendance aux données</strong> : la qualité de la suite dépend de la qualité du corpus,
+  laquelle dépend d'un jugement humain sur ce qu'est une offre « pertinente ».</li>
+<li><strong>Faux positifs</strong> : la sur-génération de tests est un risque réel (tests redondants qui
+  donnent une fausse impression de couverture). Critère appliqué : chaque test doit
+  porter une propriété ou un risque identifié, sinon il est supprimé.</li>
+<li><strong>Oracle non vérifié</strong> : une IA ne peut pas servir d'oracle de pertinence. Le seul
+  oracle admis ici est l'étiquetage humain du corpus.</li>
+</ul>
+<h2 id="usage-prevu-et-non-fait-dans-lapplication-elle-meme">Usage prévu (et non fait) dans l'application elle-même</h2>
+<p>Le projet utilise déjà un modèle de langue pour <strong>enrichir</strong> les offres (technologies,
+séniorité, contrat, remote, fourchette). Conformément au ch. 11 :</p>
+<ul>
+<li>ces valeurs enrichies sont traitées comme une <strong>source de variabilité à absorber</strong>
+  (parsing tolérant, alias), jamais comme une vérité ;</li>
+<li>aucune donnée produite par le modèle ne déclenche d'action automatique (pas de
+  candidature, pas de rejet d'offre) : l'humain décide ;</li>
+<li>toute généralisation de l'usage du modèle (génération de lettre, tri automatique des
+  offres) devra être accompagnée d'un taux d'erreur mesuré et d'une revue traçable.</li>
+</ul>
+<h2 id="tracabilite-ch-11-exigence-de-revue">Traçabilité (ch. 11, exigence de revue)</h2>
+<p>Pour chaque usage d'IA dans la production de ce PoC : activité, outil, contrôle humain
+appliqué, défaut constaté et correction. C'est le tableau ci-dessus. Un test produit par
+IA est un <strong>candidat</strong>, jamais un résultat.</p></div>
+  <p style="margin-top:1.6rem;"><a href="index.html">← Retour au sommaire</a></p>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>

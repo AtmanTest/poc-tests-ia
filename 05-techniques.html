@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte 5 — Techniques appliquées — JobHunt</title>
+<link rel="stylesheet" href="static/site.css">
+</head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a class="actif" href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <div class="oeil">Portes de qualité · la démarche écrite</div>
+  <h1>Porte 5 — Techniques appliquées</h1>
+  <div class="panneau doc" style="margin-top:1.2rem;"><h1 id="porte-5-techniques-de-test-appliquees">Porte 5 — Techniques de test appliquées</h1>
+<p>Ce document liste <strong>ce qui a réellement été exécuté</strong>, avec les défauts trouvés. Les
+techniques non applicables sont nommées comme telles : le syllabus demande de justifier
+la sélection, pas d'appliquer tout le catalogue.</p>
+<h2 id="1-relations-metamorphiques-ch-95-technique-principale">1. Relations métamorphiques (ch. 9.5) — technique principale</h2>
+<p>Aucun oracle exact n'existe (« ce score devrait valoir 57 ») : l'oracle retenu est une
+<strong>relation entre deux exécutions</strong>. Sept relations implémentées et vérifiées :</p>
+<table>
+<thead>
+<tr>
+<th>Réf.</th>
+<th>Relation</th>
+<th>Résultat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MR-01</td>
+<td>mettre le titre et la description en minuscules ne change pas la décision</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-02</td>
+<td>les mettre en majuscules ne change pas la décision</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-03</td>
+<td>retirer les accents ne change pas la décision</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-04</td>
+<td>espaces multiples en tête et entre les mots</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-05</td>
+<td>ajouter une ponctuation finale au titre</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-06</td>
+<td>espaces en bord de description</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-07</td>
+<td>inverser l'ordre des phrases de la description</td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-08</td>
+<td><code>remote</code> ↔ <code>Remote</code> ↔ <code>REMOTE</code> ↔ <code>fully_remote</code> ↔ <code>100% remote</code> ↔ <code>remote work</code></td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-09</td>
+<td><code>VALIDÉE</code> ↔ <code>VALIDEE</code> ↔ <code>validée</code> ↔ <code>Validée</code></td>
+<td>identique</td>
+</tr>
+<tr>
+<td>MR-10</td>
+<td><code>hybrid</code> ↔ <code>Hybride</code> ↔ <code>HYBRIDE</code> ↔ <code>télétravail partiel</code></td>
+<td>identique</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Défauts trouvés</strong> : MR-08 et MR-09 échouaient avant correction (perte de 10 points par
+variante de casse). Le cas <code>fully_remote</code> n'était pas théorique : c'est la valeur produite
+par l'enrichissement LLM du projet, visible dans le mock d'API de <code>tests/conftest.py</code>.</p>
+<h2 id="2-test-par-sous-chaine-faux-positifs-lexicaux">2. Test par sous-chaîne (faux positifs lexicaux)</h2>
+<p>Détection des compétences par recherche de sous-chaîne : « api » apparaissait dans
+« capital » et « rapidité », « test » dans « latest ».</p>
+<table>
+<thead>
+<tr>
+<th>Entrée</th>
+<th>Avant</th>
+<th>Après</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>« Chef de projet capital investissement »</td>
+<td>score 3, compétence fantôme <code>api</code></td>
+<td>score 0, aucune compétence</td>
+</tr>
+<tr>
+<td>« Latest news about testing industry »</td>
+<td>score 10</td>
+<td>score 0</td>
+</tr>
+<tr>
+<td>« Rapidité de traitement et satisfaction client »</td>
+<td>score 3, <code>api</code></td>
+<td>score 0</td>
+</tr>
+<tr>
+<td>« Applications mobiles iOS »</td>
+<td>score 6 (<code>mobile</code>, <code>ios</code>)</td>
+<td>inchangé (détections réelles)</td>
+</tr>
+</tbody>
+</table>
+<p>Correction : correspondance sur <strong>mot entier</strong> avec frontières alphanumériques,
+sauf mots-clés à séparateur technique (<code>ci/cd</code>, <code>/jour</code>) qui restent en sous-chaîne.</p>
+<h2 id="3-test-de-monotonie-propriete">3. Test de monotonie (propriété)</h2>
+<p>Ajouter une compétence du profil dans la description d'une offre <strong>ne doit jamais faire
+baisser</strong> le score. Vérifié sur les 34 compétences du lexique : aucune violation.
+Cette propriété borne l'effet d'un enrichissement partiel de l'offre.</p>
+<h2 id="4-valeurs-limites-ch-97-et-ch-3">4. Valeurs limites (ch. 9.7 et ch. 3)</h2>
+<p>Salaire / TJM : une plage « 600-700 €/jour » et « 600 à 700 EUR /jour » doivent donner le
+même résultat (moyenne 650). Le second cas échouait après la normalisation des accents :
+le faisceau <code>[-àà]</code> ne reconnaissait plus le « à » devenu « a ». Corrigé par un séparateur
+de plage explicite (<code>-</code>, <code>–</code>, <code>a</code>, <code>à</code>, <code>to</code>, <code>jusqu'à</code>).</p>
+<p>Marchés : « Zürich », « Lausanne », « Bâle » tombaient dans le marché <strong>français</strong>
+(comparaison de TJM fausse de 5 à 6 fois l'écart réel). Toute localisation non reconnue
+retourne désormais <code>inconnu</code>, et un marché inconnu ne produit <strong>aucune</strong> comparaison.</p>
+<h2 id="5-test-dos-a-dos-ch-93">5. Test dos à dos (ch. 9.3)</h2>
+<p>Comparaison du classement produit par le moteur avec une <strong>implémentation de référence
+indépendante</strong> (comptage de termes QA, écrite pour le test et non dérivée du code testé).
+Critère : au moins 5 offres communes sur les 8 premières. La divergence mesurée est
+documentée comme limite (le moteur pondère la fraîcheur et le freelance, pas la référence).</p>
+<h2 id="6-entrees-adverses-ch-91">6. Entrées adverses (ch. 9.1)</h2>
+<table>
+<thead>
+<tr>
+<th>Attaque</th>
+<th>Attendu</th>
+<th>Résultat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>500 emoji dans la description</td>
+<td>pas de plantage, score borné</td>
+<td>respecté</td>
+</tr>
+<tr>
+<td>Caractères de contrôle bidirectionnels (U+202E)</td>
+<td>pas d'inversion de décision</td>
+<td>respecté</td>
+</tr>
+<tr>
+<td>Injection HTML <code>&lt;script&gt;</code></td>
+<td>traité comme du texte</td>
+<td>respecté</td>
+</tr>
+<tr>
+<td>25 000 répétitions de « QA » (bourrage de mots-clés)</td>
+<td>plafonds respectés (titre 20, compétences 30, bonus 20)</td>
+<td>score ≤ 70, plafond de compétences respecté</td>
+</tr>
+<tr>
+<td>Alphabet non latin (cyrillique)</td>
+<td>pas de faux positifs</td>
+<td>respecté</td>
+</tr>
+</tbody>
+</table>
+<p>Le bornage est la protection anti-« piratage de récompense » (ch. 2, effets secondaires) :
+une offre ne peut pas dominer le classement par accumulation lexicale.</p>
+<h2 id="7-empoisonnement-des-donnees-ch-91">7. Empoisonnement des données (ch. 9.1)</h2>
+<p>Applicable au sens « donnée d'entrée malveillante ou erronée » : une offre dont un champ
+métier contredit les autres (télétravail déclaré « sur site » mais décrit comme full
+remote) ne doit pas obtenir le bonus télétravail. Vérifié : le score avec un champ métier
+défavorable est strictement inférieur au score avec le champ favorable.</p>
+<h2 id="8-non-determinisme-ch-84">8. Non-déterminisme (ch. 8.4)</h2>
+<p>200 exécutions sur la même entrée → un seul score possible : le composant est déterministe.
+Le non-déterminisme de la chaîne est situé <strong>en amont</strong> (modèle de langue) et absorbé par
+les alias de valeurs.</p>
+<p>Un second non-déterminisme, celui du <strong>classement à score égal</strong> (dépendant de l'ordre
+d'insertion en base), a été trouvé et corrigé : départage explicite par identifiant dans
+<code>app.index</code> (top, jobs du jour, hot picks). Sans cela, deux rafraîchissements pouvaient
+afficher deux « tops » différents sans qu'aucune donnée n'ait changé.</p>
+<h2 id="9-techniques-explicitement-non-retenues">9. Techniques explicitement non retenues</h2>
+<table>
+<thead>
+<tr>
+<th>Technique</th>
+<th>Pourquoi non</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Test A/B (9.4)</td>
+<td>aucun indicateur d'usage réel (clics, candidatures) n'est collecté ; comparer sans indicateur ne prouve rien</td>
+</tr>
+<tr>
+<td>Couverture des neurones / DeepXplore (6.2)</td>
+<td>le composant testé n'est pas un réseau de neurones ; les mesures de couverture neuronale s'appliquent à l'enrichissement, inaccessible (API tierce)</td>
+</tr>
+<tr>
+<td>Test par paires (9.2)</td>
+<td>combinaisons de paramètres trop peu nombreuses (3 champs métier à 3-3-4 valeurs) : la couverture exhaustive reste inférieure à 40 cas</td>
+</tr>
+<tr>
+<td>Test exploratoire / EDA (9.6)</td>
+<td>partiellement appliqué : analyse manuelle des valeurs réelles des champs en base (voir porte 2)</td>
+</tr>
+</tbody>
+</table></div>
+  <p style="margin-top:1.6rem;"><a href="index.html">← Retour au sommaire</a></p>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte 4 — Plan de test — JobHunt</title>
+<link rel="stylesheet" href="static/site.css">
+</head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a class="actif" href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <div class="oeil">Portes de qualité · la démarche écrite</div>
+  <h1>Porte 4 — Plan de test</h1>
+  <div class="panneau doc" style="margin-top:1.2rem;"><h1 id="porte-4-plan-de-test-specification-niveaux-donnees-derive-environnement">Porte 4 — Plan de test : spécification, niveaux, données, dérive, environnement</h1>
+<h2 id="specification-du-composant-ch-7">Spécification du composant (ch. 7)</h2>
+<table>
+<thead>
+<tr>
+<th>Élément</th>
+<th>Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Composant</td>
+<td><code>matcher.match_job_to_cv(job, cv_skills=None) -&gt; (score:int 0-100, matched:list[str])</code></td>
+</tr>
+<tr>
+<td>Entrées</td>
+<td>dictionnaire d'offre : <code>title</code>, <code>description</code>, <code>tags</code>, <code>salary</code>, <code>remote_type</code>, <code>freelance_status</code> (+ <code>location</code> pour le TJM)</td>
+</tr>
+<tr>
+<td>Sortie</td>
+<td>score borné 0-100, liste des compétences reconnues (traçabilité)</td>
+</tr>
+<tr>
+<td>Dépendances</td>
+<td>lexique <code>CV_SKILLS</code> (34 entrées, dont 5 équivalents français), <code>TJM_RANGES</code> (5 marchés)</td>
+</tr>
+<tr>
+<td>Version du modèle</td>
+<td>pas de modèle : version du code = version du comportement. Toute évolution du lexique change les classements → à tracer dans <code>CHANGELOG.md</code></td>
+</tr>
+<tr>
+<td>Limites connues</td>
+<td>détection lexicale, aucune compréhension sémantique ; sensible au vocabulaire employé par la source</td>
+</tr>
+</tbody>
+</table>
+<h2 id="niveaux-de-test-ch-72">Niveaux de test (ch. 7.2)</h2>
+<table>
+<thead>
+<tr>
+<th>Niveau</th>
+<th>Objet</th>
+<th>Où</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Données d'entrée</td>
+<td>forme et validité des offres transmises</td>
+<td>porte 2 + <code>test_robustesse_aux_champs_absents_ou_invalides</code></td>
+</tr>
+<tr>
+<td>Modèle / algorithme</td>
+<td>score, bornes, traçabilité des compétences</td>
+<td><code>test_niveau_fonction_score_borne_et_traçable</code></td>
+</tr>
+<tr>
+<td>Composant</td>
+<td>chaîne score + TJM + fraîcheur telle qu'utilisée par l'index</td>
+<td><code>test_niveau_composant_pipeline_complet</code></td>
+</tr>
+<tr>
+<td>Intégration</td>
+<td>page d'accueil servie avec le moteur actif</td>
+<td><code>test_niveau_integration_page_accueil</code></td>
+</tr>
+<tr>
+<td>Système</td>
+<td>parcours complet scrapers → base → page</td>
+<td>hors périmètre de ce jeu (tests BDD existants)</td>
+</tr>
+<tr>
+<td>Acceptation</td>
+<td>seuils de la porte 3</td>
+<td><code>TestPorte3Metriques</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="donnees-de-test-ch-73">Données de test (ch. 7.3)</h2>
+<ul>
+<li><strong>Corpus étiqueté</strong> verrouillé par empreinte : sert aux décisions d'acceptation.</li>
+<li><strong>Fixtures techniques</strong> (<code>sample_jobs.json</code>) : formes réelles, non utilisées pour mesurer.</li>
+<li><strong>Entrées adverses</strong> : emoji massifs, texte bidirectionnel, injection HTML,
+  répétition de mots-clés, alphabet non latin.</li>
+<li><strong>Valeurs limites du salaire</strong> : plage avec tiret, « à », « EUR », TJM explicite,
+  montant à un chiffre, montant démesuré, champ vide, champ absent.</li>
+<li><strong>Marchés</strong> : les 5 marchés de référence + un marché non couvert (Berlin) + un champ vide.</li>
+</ul>
+<h2 id="defis-specifiques-traites-ch-8">Défis spécifiques traités (ch. 8)</h2>
+<table>
+<thead>
+<tr>
+<th>Défi</th>
+<th>Traitement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Non-déterminisme</td>
+<td>le classement est <strong>déterministe</strong> (200 exécutions identiques) ; le non-déterminisme réel est en amont, dans l'enrichissement LLM → traité par la tolérance aux alias</td>
+</tr>
+<tr>
+<td>Auto-apprentissage</td>
+<td>nul en ligne ; risque reporté sur les données d'entrée et les versions de code</td>
+</tr>
+<tr>
+<td>Systèmes autonomes</td>
+<td>aucun : pas de décision automatique de candidature</td>
+</tr>
+<tr>
+<td>Biais</td>
+<td>biais d'échantillonnage du lexique (vocabulaire francophone/anglais technique) → mesuré par le rappel, pas masqué</td>
+</tr>
+<tr>
+<td>Complexité</td>
+<td>chaîne linéaire de 3 étapes, chaque étape testable séparément</td>
+</tr>
+<tr>
+<td>Explicabilité</td>
+<td><code>matched_skills</code> + détail du TJM = justification offerte par offre</td>
+</tr>
+<tr>
+<td>Oracle</td>
+<td>oracle <strong>expert humain</strong> sur corpus étiqueté (pas d'oracle automatique possible : la « vérité » d'une pertinence est un jugement)</td>
+</tr>
+<tr>
+<td>Sûreté</td>
+<td>pas d'enjeu physique ; enjeu de perte d'opportunité, traité par le seuil de rappel</td>
+</tr>
+</tbody>
+</table>
+<h2 id="derive-ch-76">Dérive (ch. 7.6)</h2>
+<ul>
+<li><strong>Dérive du concept</strong> : le marché de la QA change (nouvelles technologies : IA,
+  MLOps, tests de systèmes IA ; nouveaux intitulés). Le lexique doit être revu
+  périodiquement — <strong>déclencheur</strong> : baisse du taux d'offres à score ≥ 40, ou apparition
+  d'intitulés récurrents non reconnus.</li>
+<li><strong>Dérive de plateforme / de source</strong> : une source peut changer son format de date,
+  de salaire ou de champ remote → les contrôles de la porte 2 sont rejoués à chaque
+  évolution de scraper.</li>
+<li><strong>Dérive du modèle amont</strong> : le fournisseur d'enrichissement peut changer de version
+  sans préavis → l'invariance aux alias de valeurs métier est la protection retenue.</li>
+<li><strong>Non couvert</strong> : aucun suivi automatique de la performance en production. C'est la
+  limite assumée de ce PoC (voir « sujets ouverts » ci-dessous).</li>
+</ul>
+<h2 id="environnement-ch-10">Environnement (ch. 10)</h2>
+<table>
+<thead>
+<tr>
+<th>Élément</th>
+<th>Valeur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Environnement d'exécution des tests</td>
+<td>Python 3.12, pytest 9.0.3, Flask 3.1.3, base SQLite en mémoire (<code>test_db</code>)</td>
+</tr>
+<tr>
+<td>Isolation</td>
+<td>aucune écriture en base de production ; le dépôt ne contient aucune donnée d'exploitation</td>
+</tr>
+<tr>
+<td>Reproductibilité</td>
+<td>corpus verrouillé par SHA-256, fixtures versionnées, aucun appel réseau dans les tests du moteur (l'API d'enrichissement est simulée par <code>responses</code>)</td>
+</tr>
+<tr>
+<td>Environnement virtuel / jumeau numérique</td>
+<td>non nécessaire ici : pas de système embarqué, pas d'interaction capteur. Le « simulateur » utilisé est la base en mémoire et les fixtures</td>
+</tr>
+<tr>
+<td>Limite</td>
+<td>les tests d'intégration de l'index s'appuient sur la base en mémoire : le comportement avec 1 000+ offres réelles n'est pas couvert par ces tests (couvert par les tests BDD existants)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="sujets-ouverts-a-traiter-explicitement-non-faits-ici">Sujets ouverts (à traiter, explicitement non faits ici)</h2>
+<ol>
+<li><strong>Suivi de dérive en production</strong> : enregistrer chaque semaine la distribution des
+   scores et la part d'offres ≥ 40, alerter en cas de rupture. Nécessite un stockage
+   d'historique (aujourd'hui absent).</li>
+<li><strong>Corpus d'évaluation élargi</strong> : passer de 24 à 100+ offres réelles étiquetées
+   (échantillonnées sur plusieurs sources et plusieurs pays) avant de relever un seuil.</li>
+<li><strong>Enrichissement versionné</strong> : journaliser le modèle et la date de chaque appel
+   d'enrichissement pour rendre une décision de classement rejouable.</li>
+<li><strong>Test A/B</strong> (ch. 9.4) : comparer deux versions de seuil sur un flux réel, avec
+   indicateur de clics/candidatures. Non applicable aujourd'hui : aucun indicateur
+   d'usage collecté côté utilisateur.</li>
+</ol></div>
+  <p style="margin-top:1.6rem;"><a href="index.html">← Retour au sommaire</a></p>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>

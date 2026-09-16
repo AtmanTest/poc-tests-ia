@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte 1 — Cadrage du risque IA — JobHunt</title>
+<link rel="stylesheet" href="static/site.css">
+</head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a class="actif" href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <div class="oeil">Portes de qualité · la démarche écrite</div>
+  <h1>Porte 1 — Cadrage du risque IA</h1>
+  <div class="panneau doc" style="margin-top:1.2rem;"><h1 id="porte-1-cadrage-du-risque-ia">Porte 1 — Cadrage du risque IA</h1>
+<h2 id="systeme-concerne">Système concerné</h2>
+<p><code>matcher.py</code> + l'enrichissement (<code>auto_enrich.py</code>, API LLM) appelés par <code>app.index</code>.</p>
+<p>Chaîne : offre brute (scrapers) → enrichissement LLM (technologies, séniorité, type de
+contrat, remote, fourchette) → <strong><code>match_job_to_cv</code></strong> → score 0-100 → <code>analyze_tjm</code> →
+classement affiché (<code>top_matches</code>, <code>jobs_of_day</code>, <code>hot_picks</code>, priorité).</p>
+<h2 id="classification-syllabus-ch-1">Classification (syllabus ch. 1)</h2>
+<ul>
+<li><strong>IA faible et étroite</strong> : une seule tâche, à savoir décider si une offre est pertinente
+  pour un profil de test logiciel freelance et à quel point. Aucune IA générale, aucune
+  autonomie de décision : le score ordonne, l'humain postule.</li>
+<li>Deux composants distincts dans la chaîne, avec deux natures de risque différentes :</li>
+<li><strong>enrichissement</strong> = modèle de langue appelé par API (non déterministe, non versionné
+    côté fournisseur, données inconnues) ;</li>
+<li><strong>classement (<code>matcher.py</code>)</strong> = algorithme déterministe à base de règles et de mots-clés.
+    C'est le composant dont la sortie est <strong>opposable</strong> : c'est lui qui décide ce qui
+    remonte à l'écran.</li>
+<li>Mode d'approvisionnement : <strong>modèle pré-entraîné tiers (AIaaS)</strong> pour l'enrichissement,
+  développement propre pour le classement → risques de dépendance fournisseur, de
+  changement de version silencieux et de données d'entraînement inconnues.</li>
+</ul>
+<h2 id="les-8-caracteristiques-de-qualite-specifiques-a-lia-ch-2-appliquees-ici">Les 8 caractéristiques de qualité spécifiques à l'IA (ch. 2) appliquées ici</h2>
+<table>
+<thead>
+<tr>
+<th>Caractéristique</th>
+<th>Traduction dans ce système</th>
+<th>Où c'est testé</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Flexibilité / adaptabilité</td>
+<td>le score doit rester stable quand la <strong>forme</strong> de l'offre change (casse, accents, espaces, ponctuation, ordre des phrases)</td>
+<td>porte 6, MR-01 à MR-07</td>
+</tr>
+<tr>
+<td>Autonomie</td>
+<td>nulle : aucune décision automatique de candidature. L'humain reste dans la boucle</td>
+<td>porte 1 (conception)</td>
+</tr>
+<tr>
+<td>Évolution (auto-apprentissage)</td>
+<td>le classement n'apprend pas en ligne : il est figé par version de code. Le risque d'évolution est donc dans les <strong>données d'entrée</strong> (nouveaux formats de sources)</td>
+<td>porte 4</td>
+</tr>
+<tr>
+<td>Biais</td>
+<td>biais d'échantillonnage : le lexique du profil est calé sur un marché (France, freelance, anglais technique) et peut manquer des intitulés locaux</td>
+<td>porte 3 (rappel par classe)</td>
+</tr>
+<tr>
+<td>Éthique</td>
+<td>les offres sont des données publiques ; aucune donnée personnelle du candidat ne doit entrer dans le dépôt</td>
+<td>porte 2 (balayage e-mail/téléphone)</td>
+</tr>
+<tr>
+<td>Effets secondaires / piratage de récompense</td>
+<td>une offre qui empile les mots-clés (« QA, test, automation, TJM ») pourrait dominer le classement sans être réellement pertinente</td>
+<td>porte 5, bornage du bourrage</td>
+</tr>
+<tr>
+<td>Transparence / interprétabilité / explicabilité</td>
+<td>le score est explicable : <code>matched_skills</code> liste les compétences reconnues, et le TJM affiche le détail du calcul. <strong>Exigence</strong> : toute remontée de classement doit être justifiable offre par offre</td>
+<td>porte 4, traçabilité du score</td>
+</tr>
+<tr>
+<td>Sûreté</td>
+<td>pas d'enjeu de sécurité physique ; l'enjeu est la <strong>perte d'opportunité</strong> (une offre pertinente non remontée) et l'erreur d'affichage</td>
+<td>porte 3 (rappel)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="risques-identifies-et-attenuations">Risques identifiés et atténuations</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Risque</th>
+<th>Effet</th>
+<th>Atténuation retenue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R1</td>
+<td>Une offre pertinente n'est jamais remontée</td>
+<td>perte d'opportunité invisible</td>
+<td>seuil de pertinence verrouillé + test « aucune offre pertinente à plus de 10 points sous le seuil »</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>Une offre hors sujet remonte en tête</td>
+<td>perte de temps, perte de confiance</td>
+<td>marge de score maximale pour les offres hors sujet</td>
+</tr>
+<tr>
+<td>R3</td>
+<td>Le classement dépend de la source (casse, format)</td>
+<td>classement instable d'un cycle à l'autre</td>
+<td>normalisation, relations métamorphiques</td>
+</tr>
+<tr>
+<td>R4</td>
+<td>Le classement dépend de l'ordre en base</td>
+<td>deux affichages différents sans changement de données</td>
+<td>départage déterministe par identifiant</td>
+</tr>
+<tr>
+<td>R5</td>
+<td>L'enrichissement LLM change de version</td>
+<td>valeurs métier inattendues (<code>fully_remote</code>)</td>
+<td>tolérance aux alias de valeurs + test dédié</td>
+</tr>
+<tr>
+<td>R6</td>
+<td>Comparaison de TJM contre le mauvais marché</td>
+<td>décision financière faussée</td>
+<td>marché inconnu → aucune comparaison plutôt qu'une comparaison fausse</td>
+</tr>
+<tr>
+<td>R7</td>
+<td>Fuite de données personnelles via le dépôt ou le site</td>
+<td>préjudice direct</td>
+<td>test permanent de balayage (e-mail, téléphones), corpus synthétique</td>
+</tr>
+<tr>
+<td>R8</td>
+<td>Le corpus d'évaluation est modifié sans que les métriques soient revues</td>
+<td>faux sentiment de qualité</td>
+<td>empreinte SHA-256 du corpus verrouillée par un test</td>
+</tr>
+</tbody>
+</table>
+<h2 id="perimetre-exclu-assume">Périmètre exclu (assumé)</h2>
+<ul>
+<li>La qualité intrinsèque du modèle d'enrichissement tiers : non testable (fournisseur
+  fermé, version non épinglée). Traité comme une <strong>source de variabilité</strong> à absorber,
+  pas comme un composant dont on prouve la justesse.</li>
+<li>Les tests d'interface visuelle (Playwright) : hors de cette porte.</li>
+</ul></div>
+  <p style="margin-top:1.6rem;"><a href="index.html">← Retour au sommaire</a></p>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>

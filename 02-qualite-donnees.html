@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte 2 — Qualité des données — JobHunt</title>
+<link rel="stylesheet" href="static/site.css">
+</head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a class="actif" href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <div class="oeil">Portes de qualité · la démarche écrite</div>
+  <h1>Porte 2 — Qualité des données</h1>
+  <div class="panneau doc" style="margin-top:1.2rem;"><h1 id="porte-2-qualite-des-donnees">Porte 2 — Qualité des données</h1>
+<h2 id="principe">Principe</h2>
+<p>Les données sont un livrable testable au même titre que le code : ce qui entre dans le
+classement doit être contrôlé avant d'être utilisé comme vérité.</p>
+<h2 id="trois-jeux-distincts">Trois jeux distincts</h2>
+<table>
+<thead>
+<tr>
+<th>Jeu</th>
+<th>Contenu</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Corpus de référence étiqueté</td>
+<td><code>tests/fixtures/ct_ai/matcher_gold.json</code> — 24 offres synthétiques, 12 pertinentes / 12 hors sujet, étiquetées manuellement</td>
+<td>mesure (précision, rappel, F1) : c'est <strong>l'unique</strong> jeu de mesure</td>
+</tr>
+<tr>
+<td>Corpus technique</td>
+<td><code>tests/fixtures/sample_jobs.json</code></td>
+<td>tests fonctionnels et d'intégration, non utilisés pour mesurer</td>
+</tr>
+<tr>
+<td>Données de production</td>
+<td><code>jobs.db</code> (jamais versionnée)</td>
+<td>exploitation ; <strong>jamais</strong> utilisée comme jeu d'évaluation, sous peine de mesurer la mémorisation</td>
+</tr>
+</tbody>
+</table>
+<p>Aucune offre du jeu de mesure ne provient de la production : pas de fuite
+apprentissage / évaluation.</p>
+<h2 id="regle-detiquetage-ecrite-avant-la-mesure">Règle d'étiquetage (écrite avant la mesure)</h2>
+<p><code>label = 1</code> si le <strong>cœur</strong> du poste est le test ou la qualité logicielle (manuel,
+automatisation, QA lead, test manager, recette, assurance qualité) ou une mission
+freelance de test.
+<code>label = 0</code> sinon, <strong>même si</strong> l'offre mentionne « test », « QA » ou « quality » en
+passant (développeur qui écrit des tests unitaires, product owner, SRE, marketing qui
+mène des A/B tests).</p>
+<p>Cette règle est appliquée avant toute mesure : sur un corpus de cette taille, ajuster la
+règle après avoir vu les scores serait du surajustement (ch. 3).</p>
+<h2 id="controles-automatises-extraits-de-teststest_ct_ai_gatespy">Contrôles automatisés (extraits de <code>tests/test_ct_ai_gates.py</code>)</h2>
+<ol>
+<li><strong>Complétude</strong> : tout enregistrement porte <code>id</code>, <code>label</code>, <code>title</code>, <code>company</code>,
+   <code>description</code>, <code>salary</code>, <code>remote_type</code>, <code>freelance_status</code>, <code>location</code>.</li>
+<li><strong>Domaine des étiquettes</strong> : <code>label ∈ {0, 1}</code>, aucun identifiant dupliqué.</li>
+<li><strong>Équilibre des classes</strong> : ratio ≥ 0,5 entre les deux classes — un corpus déséquilibré
+   rendrait l'exactitude trompeuse (ch. 4, qualité des jeux de données).</li>
+<li><strong>Données personnelles</strong> : balayage systématique des fixtures et <strong>de tous les fichiers
+   suivis</strong> par git (adresses e-mail, téléphones français et internationaux). Les domaines
+   de démonstration (<code>example.com</code>, <code>test.com</code>) sont explicitement tolérés : ce sont des
+   placeholders de documentation, pas des données personnelles.</li>
+<li><strong>Versionnage</strong> : le corpus d'évaluation est suivi par git et son empreinte SHA-256 est
+   verrouillée par un test (porte 7).</li>
+</ol>
+<h2 id="qualite-des-donnees-dentree-en-production-ce-qui-est-mesure-sur-la-base-locale">Qualité des données d'entrée en production : ce qui est mesuré sur la base locale</h2>
+<p>Distribution réelle des champs métier sur 1 071 offres (base locale, aucun contenu
+personnel) :</p>
+<table>
+<thead>
+<tr>
+<th>Champ</th>
+<th>Valeurs observées</th>
+<th>Conséquence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>remote_type</code></td>
+<td>vide 448, null 437, <code>remote</code> 119, <code>hybrid</code> 59, <code>onsite</code> 8</td>
+<td>83 % des offres n'ont pas d'information de télétravail : le bloc « remote » (10 points) est donc <strong>majoritairement nul</strong>, il ne discrimine qu'une minorité</td>
+</tr>
+<tr>
+<td><code>freelance_status</code></td>
+<td><code>VALIDÉE</code> 666, <code>AMBIGUË</code> 329, <code>REJETÉE</code> 20, <code>non-freelance</code> 12, null 44</td>
+<td>le classement repose sur un champ majoritairement favorable ; un faux <code>VALIDÉE</code> vaut 10 points, soit autant que le télétravail complet</td>
+</tr>
+</tbody>
+</table>
+<p>Lecture : le score s'appuie sur des champs <strong>partiellement renseignés</strong>, ce qui est une
+limite documentée de l'oracle (voir porte 3, « limites des métriques »).</p>
+<h2 id="defauts-de-donnees-constates-et-traitement">Défauts de données constatés et traitement</h2>
+<table>
+<thead>
+<tr>
+<th>Constat</th>
+<th>Traitement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L'enrichissement LLM produit <code>fully_remote</code> (voir le mock d'API dans <code>tests/conftest.py</code>) alors que le classement n'attendait que <code>remote</code></td>
+<td>alias de valeurs métier acceptés, test d'invariance dédié</td>
+</tr>
+<tr>
+<td>Des offres sans localisation du tout</td>
+<td>plus de comparaison de TJM au marché français : marché <code>inconnu</code></td>
+</tr>
+<tr>
+<td>Champs <code>description</code> / <code>tags</code> non textuels (liste, dictionnaire)</td>
+<td>traités comme vides, plus de plantage</td>
+</tr>
+</tbody>
+</table></div>
+  <p style="margin-top:1.6rem;"><a href="index.html">← Retour au sommaire</a></p>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>

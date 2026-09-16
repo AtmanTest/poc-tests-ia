@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Porte 3 — Métriques et seuils verrouillés — JobHunt</title>
+<link rel="stylesheet" href="static/site.css">
+</head><body>
+<div class="ciel"></div>
+<header class="entete">
+  <div class="entete-in">
+    <a class="marque" href="index.html"><span class="orbe"></span>
+      <span class="pile"><span>JobHunt</span><small>QA · Démonstrations</small></span></a>
+    <nav class="nav">
+      <a href="cycle-de-vie.html">Cycle de vie</a>
+      <a href="chaine-de-livraison.html">Chaîne de livraison</a>
+      <a href="vitrine-ct-ai.html">Test d'IA</a>
+      <a class="actif" href="index.html">Sommaire</a>
+    </nav>
+  </div>
+  <div class="jauge"></div>
+</header>
+<div class="page">
+  <div class="oeil">Portes de qualité · la démarche écrite</div>
+  <h1>Porte 3 — Métriques et seuils verrouillés</h1>
+  <div class="panneau doc" style="margin-top:1.2rem;"><h1 id="porte-3-metriques-de-performance-fonctionnelle-et-seuils-verrouilles">Porte 3 — Métriques de performance fonctionnelle et seuils verrouillés</h1>
+<h2 id="choix-de-la-metrique-ch-5">Choix de la métrique (ch. 5)</h2>
+<p>Le composant rend une <strong>décision binaire</strong> (offre pertinente / non pertinente) à partir
+d'un score continu. Les quatre situations de la matrice de confusion n'ont pas le même
+coût :</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Effet réel</th>
+<th>Coût</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Faux négatif (offre pertinente sous le seuil)</td>
+<td>la mission n'est jamais vue</td>
+<td><strong>élevé</strong> : perte d'opportunité silencieuse</td>
+</tr>
+<tr>
+<td>Faux positif (offre hors sujet au-dessus du seuil)</td>
+<td>quelques minutes perdues à lire</td>
+<td>faible</td>
+</tr>
+</tbody>
+</table>
+<p>Conséquence : le <strong>rappel</strong> est la métrique directrice ; la précision est un garde-fou
+(une précision qui s'effondre rend la liste inutilisable). La métrique composite retenue
+est le <strong>F1</strong>, complétée par l'exactitude pour la vue d'ensemble. L'exactitude seule est
+insuffisante : avec 50 % d'offres hors sujet, un classifieur qui dit « tout est pertinent »
+afficherait 50 % d'exactitude.</p>
+<p>Seuil de décision retenu : <strong>score ≥ 40 / 100</strong>.</p>
+<h2 id="resultat-sur-le-corpus-verrouille-24-offres-etiquetees-1212">Résultat sur le corpus verrouillé (24 offres étiquetées, 12/12)</h2>
+<table>
+<thead>
+<tr>
+<th>Seuil</th>
+<th>Précision</th>
+<th>Rappel</th>
+<th>F1</th>
+<th>Exactitude</th>
+<th>TP</th>
+<th>FP</th>
+<th>FN</th>
+<th>TN</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>30</td>
+<td>0,706</td>
+<td>1,000</td>
+<td>0,828</td>
+<td>0,792</td>
+<td>12</td>
+<td>5</td>
+<td>0</td>
+<td>7</td>
+</tr>
+<tr>
+<td><strong>40</strong></td>
+<td><strong>1,000</strong></td>
+<td><strong>0,917</strong></td>
+<td><strong>0,957</strong></td>
+<td><strong>0,958</strong></td>
+<td><strong>11</strong></td>
+<td><strong>0</strong></td>
+<td><strong>1</strong></td>
+<td><strong>12</strong></td>
+</tr>
+<tr>
+<td>50</td>
+<td>1,000</td>
+<td>0,583</td>
+<td>0,737</td>
+<td>0,792</td>
+<td>7</td>
+<td>0</td>
+<td>5</td>
+<td>12</td>
+</tr>
+<tr>
+<td>60</td>
+<td>1,000</td>
+<td>0,250</td>
+<td>0,400</td>
+<td>0,625</td>
+<td>3</td>
+<td>0</td>
+<td>9</td>
+<td>12</td>
+</tr>
+<tr>
+<td>70</td>
+<td>1,000</td>
+<td>0,083</td>
+<td>0,154</td>
+<td>0,542</td>
+<td>1</td>
+<td>0</td>
+<td>11</td>
+<td>12</td>
+</tr>
+</tbody>
+</table>
+<p>Détail des scores (offre = score / étiquette) :</p>
+<pre><code>g01=71/1  g08=68/1  g06=60/1  g02=59/1  g05=59/1  g03=51/1  g04=51/1  g10=49/1
+g11=48/1  g09=47/1  g12=41/1  g07=39/1 | n10=36/0  n05=35/0  n02=34/0  n01=33/0
+n04=31/0  n06=25/0  n09=25/0  n03=20/0  n07=20/0  n08=20/0  n11=20/0  n12=20/0
+</code></pre>
+<ul>
+<li>Aucune offre hors sujet n'atteint 40 : la précision au seuil est parfaite sur ce corpus.</li>
+<li>1 seul faux négatif : <code>g07</code> (Tester Mobile iOS/Android, 39) — manqué de 1 point.</li>
+<li>Séparation nette : la meilleure offre hors sujet plafonne à 36, la dernière offre
+  pertinente est à 39. Marge très faible : c'est le point de fragilité à surveiller.</li>
+</ul>
+<h2 id="seuils-verrouilles-non-regression">Seuils verrouillés (non-régression)</h2>
+<table>
+<thead>
+<tr>
+<th>Constante du test</th>
+<th>Valeur</th>
+<th>Mesure de référence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SEUIL_PERTINENCE</code></td>
+<td>40</td>
+<td>optimum F1 sur le corpus</td>
+</tr>
+<tr>
+<td><code>PRECISION_MIN</code></td>
+<td>0,95</td>
+<td>mesuré 1,000</td>
+</tr>
+<tr>
+<td><code>RAPPEL_MIN</code></td>
+<td>0,85</td>
+<td>mesuré 0,917</td>
+</tr>
+<tr>
+<td><code>F1_MIN</code></td>
+<td>0,90</td>
+<td>mesuré 0,957</td>
+</tr>
+<tr>
+<td><code>EXACTITUDE_MIN</code></td>
+<td>0,90</td>
+<td>mesuré 0,958</td>
+</tr>
+<tr>
+<td><code>MARGE_OFFRES_NON_PERTINENTES</code></td>
+<td>50</td>
+<td>max mesuré pour une offre hors sujet : 36</td>
+</tr>
+</tbody>
+</table>
+<p>Ces valeurs sont des <strong>verrous de non-régression</strong>, pas des objectifs de performance. Une
+baisse signale une régression ; une hausse ne doit pas être interprétée comme un progrès
+sans nouveau corpus.</p>
+<h2 id="limites-des-metriques-a-enoncer-en-revue-ch-5">Limites des métriques (à énoncer en revue, ch. 5)</h2>
+<ol>
+<li><strong>Taille du corpus</strong> : 24 offres. Un point de rappel vaut 8 % ; l'intervalle de
+   confiance est large. Toute conclusion fine est prématurée.</li>
+<li><strong>Étiquetage</strong> : binaire et synthétique. Les cas réels sont plus nuancés (mission QA
+   noyée dans un poste de dev, intitulé local).</li>
+<li><strong>Non-représentativité</strong> : corpus français/francophone majoritaire, alors que le
+   dashboard agrège aussi des sources internationales en anglais.</li>
+<li><strong>Périmètre</strong> : ces métriques mesurent le <strong>classement</strong>, pas la qualité de
+   l'enrichissement amont ni la pertinence du sourcing des offres.</li>
+<li><strong>Surajustement</strong> : le seuil 40 a été choisi sur ce corpus. Aucun ajustement
+   supplémentaire de lexique ne doit être fait en regardant ces scores — c'est
+   précisément ce que le syllabus interdit (ch. 3). La dernière extension de lexique
+   (intitulés français : « qualite », « testeur », « recette », « assurance qualite »,
+   « plan de test », « cas de test », « non-régression », « anomalie ») répond à un
+   manque constaté sur des intitulés réels du marché visé, et non à une optimisation de
+   score : effet mesuré = rappel 0,833 → 0,917, précision inchangée.</li>
+</ol>
+<h2 id="suites-de-benchmark-ch-5-non-applicables">Suites de benchmark (ch. 5) — non applicables</h2>
+<p>Le syllabus cite les suites de référence MLCommons, DAWNBench, MLMark. Elles portent sur
+les performances d'entraînement et d'inférence de modèles : hors sujet ici (aucun modèle
+n'est entraîné ni servi par le dépôt).</p></div>
+  <p style="margin-top:1.6rem;"><a href="index.html">← Retour au sommaire</a></p>
+</div>
+<footer class="pied"><div class="pied-in">
+  <span>JobHunt · démonstrations de test logiciel et de test d'IA</span>
+  <span style="margin-left:auto;">Chiffres issus d'exécutions réelles · dépôt privé, code présenté sur demande</span>
+</div></footer>
+<script src="static/site.js" defer></script>
+</body></html>
